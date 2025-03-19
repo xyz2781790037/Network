@@ -81,6 +81,7 @@ int main()
         }
         std::cout << "已发送 " << sent_bytes << "字节" << std::endl;
     }
+    shutdown(sockfd, SHUT_RDWR);
     close(sockfd);
     pthread_join(pth, nullptr);
     std::cout << "连接已关闭" << std::endl;
