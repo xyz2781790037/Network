@@ -3,24 +3,17 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string>
-#include <unistd.h>
-#include <pthread.h>
+#include "th_pool.hpp"
 #define SERVER_IP "127.0.0.1" // 服务器IP地址
-#define SERVER_PORT 8088      // 服务器端口
+#define SERVER_PORT 8080      // 服务器端口
 #define BUFFER_SIZE 1024      // 缓冲区大小
-pthread_mutex_t mutex;
-struct ThreadArgs
-{
-    int sockfd;
-};
 void *receive(void *arg)
 {
-    pthread_mutex_lock(&mutex);
-    ThreadArgs *a = static_cast<ThreadArgs *>(arg);
+    int *sock = static_cast<int *>(arg);
     std::string buffer;
     while (1)
     {
-        ssize_t recv_bytes = recv(a->sockfd, (void *)buffer.c_str(), BUFFER_SIZE, 0);
+        ssize_t recv_bytes = recv(*sock, (void *)buffer.c_str(), BUFFER_SIZE, 0);
         if (recv_bytes < 0)
         {
             perror("receive failed");
@@ -32,18 +25,39 @@ void *receive(void *arg)
             break;
         }
         std::cout << "收到响应" << recv_bytes << "字节" << std::endl;
-        std::cout << buffer << std::endl;
+        printf("%s", buffer.c_str());
         buffer.clear();
     }
-    pthread_mutex_unlock(&mutex);
+    delete sock;
+    return nullptr;
+}
+void *sendd(void *arg)
+{
+    int *sock = static_cast<int *>(arg);
+    std::string buffer;
+    while (1)
+    {
+        std::cout << "请输入要发送的消息 (输入exit退出):";
+        getline(std::cin, buffer);
+        if (buffer == "exit")
+        {
+            break;
+        }
+        ssize_t sent_bytes = send(*sock, buffer.c_str(), buffer.size(), 0);
+        if (sent_bytes < 0)
+        {
+            perror("send error");
+            break;
+        }
+        std::cout << "已发送 " << sent_bytes << "字节" << std::endl;
+    }
+    delete sock;
     return nullptr;
 }
 int main()
 {
-    pthread_mutex_init(&mutex, nullptr);
     int sockfd;
     struct sockaddr_in server_addr;
-    std::string buffer;
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         perror("socket build failed");
@@ -62,28 +76,14 @@ int main()
         exit(1);
     }
     std::cout << "已连接到服务器" << SERVER_IP << " " << SERVER_PORT << std::endl;
-    struct ThreadArgs Arg = {sockfd};
-    pthread_t pth;
-    pthread_create(&pth, nullptr, receive, &Arg);
+    pool po;
     while (1)
     {
-        std::cout << "请输入要发送的消息 (输入exit退出):";
-        getline(std::cin, buffer);
-        if (buffer == "exit")
-        {
-            break;
-        }
-        ssize_t sent_bytes = send(sockfd, buffer.c_str(), buffer.size(), 0);
-        if (sent_bytes < 0)
-        {
-            perror("send error");
-            break;
-        }
-        std::cout << "已发送 " << sent_bytes << "字节" << std::endl;
+        po.enqueue(receive, &sockfd);
+        po.enqueue(sendd, &sockfd);
     }
     shutdown(sockfd, SHUT_RDWR);
     close(sockfd);
-    pthread_join(pth, nullptr);
-    std::cout << "连接已关闭" << std::endl;
+    po.end_thread();
     return 0;
 }
