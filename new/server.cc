@@ -15,15 +15,15 @@ struct ThreadArgs
 void *handclient(void *arg)
 {
     ThreadArgs *sock = static_cast<ThreadArgs *>(arg);
-    char buffer[BUFFER_SIZE];
+    std::string buffer;
     while (1)
     {
-        ssize_t valread = recv(sock->read_sock, buffer, BUFFER_SIZE, 0);
+        ssize_t valread = recv(sock->read_sock, (void*)buffer.c_str(), BUFFER_SIZE, 0);
         if (valread <= 0)
             break;
 
         std::cout << "转发 " << valread << "字节数据" << std::endl;
-        send(sock->write_sock, buffer, valread, 0);
+        send(sock->write_sock, buffer.c_str(), valread, 0);
     }
     close(sock->read_sock);
     close(sock->write_sock);
@@ -66,13 +66,14 @@ int main()
         if ((sock2 = accept(sockfd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0)
         {
             perror("accept失败");
+            close(sock1);
             continue;
         }
         std::cout << "新连接来自" << inet_ntoa(address.sin_addr) << ntohs(address.sin_port) << std::endl;
         ThreadArgs *args1 = new ThreadArgs{sock1, sock2};
         ThreadArgs *args2 = new ThreadArgs{sock2, sock1};
-        po.enqueue(handclient, &args1);
-        po.enqueue(handclient, &args2);
+        po.enqueue(handclient, args1);
+        po.enqueue(handclient, args2);
     }
     po.end_thread();
     return 0;
