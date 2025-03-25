@@ -28,7 +28,7 @@ void *receive(void *arg)
             break;
         }
         buffer[recv_bytes] = '\0';
-        std::cout << "收到响应:" << buffer << std::endl;
+        std::cout << "\n[he]:" << buffer << std::endl;
     }
     return nullptr;
 }
@@ -38,7 +38,7 @@ void *sendd(void *arg)
     std::string buffer;
     while (runflag)
     {
-        std::cout << "请输入要发送的消息:";
+        std::cout << "[you]:";
         getline(std::cin, buffer);
         if (buffer == "exit")
         {
@@ -81,7 +81,8 @@ int main()
     pool po;
     po.enqueue(receive, &sockfd);
     po.enqueue(sendd, &sockfd);
-    while(runflag){
+    while (runflag)
+    {
         sleep(1);
     }
     shutdown(sockfd, SHUT_RDWR);
