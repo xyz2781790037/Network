@@ -106,4 +106,42 @@ select在调用过程中可能会遇到错误，常见的错误包括：
 ### 2.4 select在多线程环境中的应用
 
 在多线程环境中，select可以与线程结合起来使用，以提高程序的性能和并发处理能力。例如，可以在一个线程中使用select来监听多个套接字，然后在其他线程中处理就绪的套接字。
+## FD
+在 select 服务器中，需要用到一组与 文件描述符 (FD, File Descriptor) 相关的函数，主要包括以下几个：
+
+### 1. `FD_ZERO(fd_set *set)`
+
+- 作用：清空 `fd_set` 集合，初始化为空。
+
+```c
+fd_set read_fds;
+FD_ZERO(&read_fds);
+```
+
+### 2. `FD_SET(int fd, fd_set *set)`
+
+- 作用：向 `fd_set` 集合中添加文件描述符 `fd`。
+
+```c
+FD_SET(sockfd, &read_fds);
+```
+
+### 3. `FD_CLR(int fd, fd_set *set)`
+
+- 作用：从 `fd_set` 集合中移除文件描述符 `fd`。
+
+```c
+FD_CLR(sockfd, &read_fds);
+```
+
+### 4. `FD_ISSET(int fd, fd_set *set)`
+
+- 作用：检查 `fd_set` 集合中是否包含 `fd`，即该描述符是否有事件发生。
+- 返回值：如果 `fd` 在 `set` 中，则返回非零值，否则返回 0。
+
+```c
+if (FD_ISSET(sockfd, &read_fds)) {
+    printf("Socket %d is ready for reading\n", sockfd);
+}
+```
 
