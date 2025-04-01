@@ -19,23 +19,23 @@ int main()
     if (server_fd < 0)
     {
         perror("socket");
-        exit(1);
+        return 1;
     }
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(PORT);
     server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(PORT);
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
         perror("bind");
         close(server_fd);
-        exit(1);
+        return 1;
     }
     if (listen(server_fd, 5) < 0)
     {
         perror("listen");
         close(server_fd);
-        exit(1);
+        return 1;
     }
     std::cout << "Listening on port: " << PORT << std::endl;
     std::vector<pollfd> fds;
@@ -57,20 +57,20 @@ int main()
                 {
                     struct sockaddr_in client_addr;
                     socklen_t addr_len = sizeof(client_addr);
-                    int client_send_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
-                    if (client_send_fd < 0)
+                    int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
+                    if (client_fd < 0)
                     {
                         perror("accept");
                         continue;
                     }
-                    std::cout << "New client connected: " << client_send_fd << std::endl;
-                    fds.push_back({client_send_fd, POLLIN, 0});
-                    clients[client_send_fd] = {client_send_fd, ""};
+                    std::cout << "New client connected: " << client_fd << std::endl;
+                    fds.push_back({client_fd, POLLIN, 0});
+                    clients[client_fd] = {client_fd, ""};
                 }
                 else
                 {
                     char buffer[BUFFER_MAXSIZE];
-                    int recv_bytes = recv(fds[i].fd, buffer, BUFFER_MAXSIZE, 0);
+                    int recv_bytes = recv(fds[i].fd, buffer, BUFFER_MAXSIZE - 1, 0);
                     if (recv_bytes <= 0)
                     {
                         std::cout << "Client disconnected: " << fds[i].fd << std::endl;
@@ -82,18 +82,9 @@ int main()
                     else
                     {
                         buffer[recv_bytes] = '\0';
-                        std::cout << "Received from " << fds[i].fd << ": " << buffer << std::endl;
-                        for(auto &client:clients){
-                            if(client.first != fds[i].fd){
-                                client.second.send_buffer += buffer;
-                                for(auto&pollfd:fds){
-                                    if(pollfd.fd == client.first){
-                                        pollfd.events |= POLLOUT;
-                                    }
-                                }
-                            }
-                            
-                        }
+                        std::cout << "Received: " << buffer << std::endl;
+                        clients[fds[i].fd].send_buffer = buffer;
+                        fds[i].events |= POLLOUT;
                     }
                 }
             }
@@ -102,7 +93,7 @@ int main()
                 if(!client.send_buffer.empty()){
                     int send_bytes = send(fds[i].fd, client.send_buffer.c_str(), client.send_buffer.size(), 0);
                     if(send_bytes > 0){
-                        client.send_buffer.erase(0, send_bytes);
+                        client.send_buffer.erase(0,send_bytes);
                         if (client.send_buffer.empty())
                         {
                             fds[i].events &= ~POLLOUT; // 发送完毕，取消 POLLOUT 监听

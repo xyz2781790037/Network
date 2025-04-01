@@ -11,8 +11,8 @@
 
 int main()
 {
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0)
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0)
     {
         perror("socket");
         exit(1);
@@ -24,40 +24,53 @@ int main()
     if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0)
     {
         perror("inet_pton");
-        close(sock);
+        close(sockfd);
         exit(1);
     }
 
-    if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
         perror("connect");
-        close(sock);
+        close(sockfd);
         exit(1);
     }
 
     std::cout << "Connected to server at " << SERVER_IP << ":" << SERVER_PORT << std::endl;
     std::vector<pollfd> fds;
+    fds.push_back({0, POLLIN, 0});
+    fds.push_back({sockfd, POLLIN, 0});
     char buffer[BUFFER_MAX];
     while (true)
     {
         std::cout << "Enter message: ";
-        std::string message;
-        std::getline(std::cin, message);
-        if (message == "exit")
-            break;
-        send(sock, message.c_str(), message.size(), 0);
-
-        int recv_bytes = recv(sock, buffer, BUFFER_MAX - 1, 0);
-        if (recv_bytes <= 0)
+        std::cout.flush(); // 确保立即输出
+        int ret = poll(fds.data(), fds.size(), -1);
+        if (ret < 0)
         {
-            std::cout << "Server disconnected!" << std::endl;
+            perror("poll");
             break;
         }
-
-        buffer[recv_bytes] = '\0';
-        std::cout << "Server: " << buffer << std::endl;
+        if (fds[0].revents & POLLIN)
+        {
+            std::string message;
+            std::getline(std::cin, message);
+            if (message == "exit")
+                break;
+            send(sockfd, message.c_str(), message.size(), 0);
+        }
+        if (fds[1].revents & POLLIN)
+        {
+            int recv_bytes = recv(sockfd, buffer, BUFFER_MAX - 1, 0);
+            if (recv_bytes <= 0)
+            {
+                std::cout << "Server disconnected!" << std::endl;
+                break;
+            }
+            buffer[recv_bytes] = '\0';
+            // std::cout << "Server: " << buffer << std::endl;
+            std::cout << "Message from other client: " << buffer << std::endl;
+        }
     }
-
-    close(sock);
+    close(sockfd);
     return 0;
 }
