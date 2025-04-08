@@ -4,13 +4,31 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/sendfile.h>
+#include <arpa/inet.h>
+#include "ispath.cc"
+#include "threadpool.hpp"
 #define PORT 2100
 #define BUFFER_MAXSIZE 1024
-void set_blocking(int fd){
-    int flags = fcntl(fd, F_GETFL, 0);
-    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+const std::string UPLOAD_DIR = "./uploads";
+// void set_blocking(int fd)
+// {
+//     int flags = fcntl(fd, F_GETFL, 0);
+//     fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+// }
+void handclient(int client_fd,pathtask pt){
+    char buffer[BUFFER_MAXSIZE];
+    ssize_t recv_bytes = read(client_fd, buffer, BUFFER_MAXSIZE);
+    if(recv_bytes < 0){
+        close(client_fd);
+        return;
+    }
+    std::string commend(buffer);
+    commend = pt.segstrspace(commend);
+    pt.handlefilename(commend);
 }
 int main(){
+    pathtask pt;
+    pt.createDir(UPLOAD_DIR);
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(server_fd < 0){
         perror("socket");
@@ -30,28 +48,20 @@ int main(){
         close(server_fd);
         exit(1);
     }
-    set_blocking(server_fd);
     std::cout << "listen : " << PORT << std::endl;
     while(true){
         struct sockaddr_in client_addr;
         socklen_t sock_len = sizeof(client_addr);
         int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &sock_len);
         if(client_fd < 0){
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-                continue;
             perror("accept");
             continue;
         }
-        set_blocking(client_fd);
-        std::cout << "Connecting from :" << client_fd << std::endl;
-        char buffer[BUFFER_MAXSIZE];
-        int read_bytes = read(client_fd, buffer, BUFFER_MAXSIZE);
-        if(read_bytes < 0){
-            perror("read");
-            close(client_fd);
-            exit(1);
-        }
-        // sendfile()
+        char client_ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
+        std::cout << "Connecting from :" << client_ip << std::endl;
+        pool po;
+        // po.enqueue()
     }
     return 0;
 }
