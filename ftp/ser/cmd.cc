@@ -81,5 +81,9 @@ public:
         {
             cwd(args,client_fd);
         }
+        else{
+            std::cout << "error input" << std::endl;
+            sendResponse(500, "invalid commend", client_fd);
+        }
     }
 };
