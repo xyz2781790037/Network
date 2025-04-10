@@ -2,10 +2,15 @@
 #include <iostream>
 #include <filesystem>
 #include <sys/socket.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include "ispath.cc"
+#include "respond_fd.hpp"
+#include "secv.cc"
+class secv;
 class cmd
 {
-    friend class pathtask;
+    secv* refile;
     pathtask handp;
     std::string segstrspace(std::string &order, int count = 0)
     {
@@ -22,10 +27,30 @@ class cmd
         }
         return order;
     }
-    void sendResponse(int code, const std::string &message, int client_fd)
-    {
-        std::string response = std::to_string(code) + " " + message + "\r\n";
-        send(client_fd, response.c_str(), response.size(), 0);
+    void stor(int fd,std::string args){
+
+        size_t filepos = args.find_last_of('/');
+        std::string filename = args.substr(filepos + 1);
+        std::string path = args.substr(0, filepos);
+        cwd(path, fd);
+        int file_fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (file_fd < 0)
+        {
+            perror("open");
+            sendResponse(550, "Failed to open file for writing.\r\n",fd);
+            return;
+        }
+        refile->send1(fd, file_fd,1024);
+    }
+    void cwd(std::string args,int client_fd){
+        if (chdir(args.c_str()) == -1)
+        {
+            sendResponse(550, "Failed to change directory.", client_fd); // 切换失败
+        }
+        else
+        {
+            sendResponse(250, "Directory successfully changed.", client_fd); // 成功
+        }
     }
 public:
     void handcmd(std::string orders,int client_fd){
@@ -42,7 +67,7 @@ public:
 
         }
         else if (order == "STOR"){
-
+            stor(client_fd, args);
         }
         else if(order == "RETR"){
 
@@ -54,14 +79,7 @@ public:
         }
         else if (order == "CWD")
         {
-            if (chdir(args.c_str()) == -1)
-            {
-                sendResponse(550, "Failed to change directory.",client_fd); //切换失败
-            }
-            else
-            {
-                sendResponse(250, "Directory successfully changed.",client_fd); //成功
-            }
+            cwd(args,client_fd);
         }
     }
 };
