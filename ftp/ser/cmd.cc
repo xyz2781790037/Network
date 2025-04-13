@@ -12,21 +12,6 @@ class cmd
 {
     secv* refile;
     pathtask handp;
-    std::string segstrspace(std::string &order, int count = 0)
-    {
-        while (count < order.size())
-        {
-            if ((order[count] == ' ' && count == 0) || (order[count] == ' ' && count == order.size() - 1) || (count + 1 < order.size() && order[count] == ' ' && order[count + 1] == ' '))
-            {
-                order.erase(count, 1);
-            }
-            else
-            {
-                count++;
-            }
-        }
-        return order;
-    }
     void stor(int fd,std::string args){
 
         size_t filepos = args.find_last_of('/');
@@ -40,9 +25,11 @@ class cmd
             sendResponse(550, "Failed to open file for writing.\r\n",fd);
             return;
         }
-        refile->send1(fd, file_fd,1024);
+        send(fd, "uping...\n", 8, 0);
+        refile->send1(fd, file_fd, 1024);
     }
     void cwd(std::string args,int client_fd){
+        send(client_fd, "uping...", 8, 0);
         if (chdir(args.c_str()) == -1)
         {
             sendResponse(550, "Failed to change directory.", client_fd); // 切换失败
@@ -54,7 +41,6 @@ class cmd
     }
 public:
     void handcmd(std::string orders,int client_fd){
-        orders = segstrspace(orders);
         ssize_t cmdspace = orders.find_first_of(' ');
         std::string order = orders.substr(0, cmdspace);
         std::string args = orders.substr(cmdspace + 1);
