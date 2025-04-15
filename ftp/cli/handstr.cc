@@ -21,13 +21,15 @@ class handstr
         }
         return order;
     }
-    void storhelper(std::string input,int fd){
+    void storhelper(std::string input,int fd,int data_fd){
         size_t pathpos = input.find_first_of(' ');
         size_t pathpos2 = input.find_last_of(' ');
         std::string tmp1 = input.substr(0, pathpos);
         std::string tmp2 = input.substr(pathpos2);
         tmp1 += tmp2;
         ssize_t send_bytes = send(fd, tmp1.c_str(), tmp1.size(), 0);
+        std::cout << "发送 STOR 指令：" << tmp1 << " (" << send_bytes << " 字节)" << std::endl;
+
         if (send_bytes < 0)
         {
             perror("send");
@@ -40,22 +42,56 @@ class handstr
             perror("recv");
             return;
         }
+        std::cout << "recv:" << recv_bytes << std::endl;
         std::string filename = input.substr(pathpos + 1, pathpos2 - pathpos - 1);
-        stor(filename, fd);
+        
+        stor(filename, data_fd);
+    }
+    void stor(std::string filename, int data_fd)
+    {
+        int file_fd = open(filename.c_str(), O_RDONLY);
+        if (file_fd < 0)
+        {
+            perror("open");
+            return;
+        }
+        struct stat st;
+        fstat(file_fd, &st);
+        sendfile(data_fd, file_fd, NULL, st.st_size);
+        char buffer[1024];
+        ssize_t recv_bytes = recv(data_fd, buffer, 1024, 0);
+        if (recv_bytes < 0)
+        {
+            perror("recv");
+            return;
+        }
+    }
+    void cdsend(int fd,std::string input){
+        int send_bytes = send(fd, input.c_str(), input.size(), 0);
+        if(send_bytes < 0){
+            perror("send");
+            return;
+        }
+        char buffer[1024];
+        ssize_t recv_bytes = recv(fd, buffer, 1024, 0);
+        if (recv_bytes < 0)
+        {
+            perror("recv");
+            return;
+        }
     }
 
 public:
-    void inputseg(std::string &input, int&fd)
+    void inputseg(std::string &input, int&fd,int&data_fd)
     {
         input = segstrspace(input);
         size_t pathpos = input.find_first_of(' ');
-        std::string order, args;
+        std::string order;
         if(pathpos < 0){
-
+            order = input;
         }
         else{
             order = input.substr(0, pathpos);
-            args = input.substr(pathpos + 1);
         }
         if (order == "PASV")
         {
@@ -65,42 +101,27 @@ public:
         }
         else if (order == "LIST")
         {
+            cdsend(fd, input);
         }
         else if (order == "STOR")
         {
-            storhelper(input,fd);
+            storhelper(input,fd,data_fd);
         }
         else if (order == "RETR")
         {
         }
         else if (order == "MKD")
         {
-            // if (!handp.createDir(args))
-            // {
-            //     perror("mkdir");
-            // }
+            cdsend(fd,input);
         }
         else if (order == "CWD")
         {
-            // cwd(args, client_fd);
+            cdsend(fd, input);
         }
         else
         {
             // std::cout << "error input" << std::endl;
             // sendResponse(500, "invalid commend", client_fd);
         }
-    }
-    void stor(std::string filename, int client_fd)
-    {
-
-        int file_fd = open(filename.c_str(), O_RDONLY);
-        if (file_fd < 0)
-        {
-            perror("open");
-            return;
-        }
-        struct stat st;
-        fstat(file_fd, &st);
-        sendfile(client_fd, file_fd, NULL, st.st_size);
     }
 };

@@ -9,7 +9,7 @@ class secv
 public:
     void recv1(int &fd,void* buf,size_t n,int flags){
         int recv_cmd = recv(fd, buf, n, flags);
-        if(recv_cmd < 0){
+        if(recv_cmd <= 0){
             perror("recvcmd");
             sendResponse(421, "Control connection error", fd);
             close(fd);
