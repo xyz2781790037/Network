@@ -42,7 +42,7 @@ class handstr
             perror("recv");
             return;
         }
-        std::cout << "recv:" << recv_bytes << std::endl;
+        std::cout << "recv:" << buffer << std::endl;
         std::string filename = input.substr(pathpos + 1, pathpos2 - pathpos - 1);
         
         stor(filename, data_fd);
@@ -65,6 +65,7 @@ class handstr
             perror("recv");
             return;
         }
+        std::cout << buffer << std::endl;
     }
     void cdsend(int fd,std::string input){
         int send_bytes = send(fd, input.c_str(), input.size(), 0);
