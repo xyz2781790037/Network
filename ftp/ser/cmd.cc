@@ -4,16 +4,20 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <vector>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <string.h>
+#include <functional>
 #include "ispath.cc"
 #include "respond_fd.hpp"
 #include "secv.cc"
 class secv;
 class cmd
 {
-    secv* refile;
+    secv *refile = new secv();
     pathtask handp;
-    void stor(int fd,std::string args){
-
+    void stor(int fd,int fdd,std::string args){
         size_t filepos = args.find_last_of('/');
         std::string filename = args.substr(filepos + 1);
         std::string path = args.substr(0, filepos);
@@ -25,8 +29,8 @@ class cmd
             sendResponse(550, "Failed to open file for writing.\r\n",fd);
             return;
         }
-        send(fd, "uping...\n", 8, 0);
-        refile->send1(fd, file_fd, 1024);
+        sendResponse(150, "The file can be transferred now", fd);
+        refile->send1(fdd, file_fd, 1024);
     }
     void cwd(std::string args,int client_fd){
         send(client_fd, "uping...", 8, 0);
@@ -39,8 +43,55 @@ class cmd
             sendResponse(250, "Directory successfully changed.", client_fd); // 成功
         }
     }
+    static int filesort(const struct dirent **a, const struct dirent **b){
+        char aw[256], bw[256];
+        strncpy(aw, (*a)->d_name + 1, strlen((*a)->d_name) - 1);
+        aw[strlen((*a)->d_name) - 1] = '\0';
+        strncpy(bw, (*b)->d_name + 1, strlen((*b)->d_name) - 1);
+        bw[strlen((*b)->d_name) - 1] = '\0';
+        return strcasecmp(aw,bw);
+    }
+    void list(std::string path, int fd)
+    {
+        sendResponse(250, "this list is ready", fd);
+        struct stat st;
+        char result[1024];
+        struct dirent **file;
+        int n = scandir(path.c_str(), &file, NULL, filesort);
+        for (int i = 0;i < n;i++){
+            memset(result, '\0', strlen(result));
+            sprintf(result, "%s/%s", path.c_str(), file[i]->d_name);
+            if (lstat(result,&st) != -1){
+                if (S_ISDIR(st.st_mode)) // 目录
+                    dprintf(fd,"d");
+                else if (S_ISLNK(st.st_mode)) // 符号链接
+                    dprintf(fd,"l");
+                else
+                    dprintf(fd,"-");
+                dprintf(fd,(st.st_mode & S_IRUSR) ? "r" : "-");
+                dprintf(fd,(st.st_mode & S_IWUSR) ? "w" : "-");
+                dprintf(fd,(st.st_mode & S_IXUSR) ? "x" : "-");
+                dprintf(fd,(st.st_mode & S_IRGRP) ? "r" : "-");
+                dprintf(fd,(st.st_mode & S_IWGRP) ? "w" : "-");
+                dprintf(fd,(st.st_mode & S_IXGRP) ? "x" : "-");
+                dprintf(fd,(st.st_mode & S_IROTH) ? "r" : "-");
+                dprintf(fd,(st.st_mode & S_IWOTH) ? "w" : "-");
+                dprintf(fd,(st.st_mode & S_IXOTH) ? "x" : "-");
+                dprintf(fd," %*lu", 3, st.st_nlink);
+                dprintf(fd," %s", "usr"); //
+                dprintf(fd," %s", "group");
+                dprintf(fd," %*lu", 10, st.st_size);
+                char time_str[20];
+                struct tm *time = localtime(&st.st_mtime);
+                strftime(time_str, sizeof(time_str), "%m月 %d %H:%M", time);
+                dprintf(fd," %s ", time_str);
+            }
+            dprintf(fd, "%s\n", file[i]->d_name);
+        }
+    }
+
 public:
-    void handcmd(std::string orders,int client_fd){
+    void handcmd(std::string orders,int client_fd,int data_fd){
         ssize_t cmdspace = orders.find_first_of(' ');
         std::string order = orders.substr(0, cmdspace);
         std::string args = orders.substr(cmdspace + 1);
@@ -50,10 +101,10 @@ public:
             
         }
         else if (order == "LIST"){
-
+            list(args,client_fd);
         }
         else if (order == "STOR"){
-            stor(client_fd, args);
+            stor(client_fd, data_fd,args);
         }
         else if(order == "RETR"){
 
