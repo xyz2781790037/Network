@@ -1,4 +1,4 @@
-#include "net.cc"
+#include "net.hpp"
 const int dataPORT = 2121;
 const int cmdPORT = 1026;
 const std::string UPLOAD_DIR = "./uploads";

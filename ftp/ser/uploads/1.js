@@ -153,7 +153,8 @@ skill = {
             sub: true,
         },
     },
-}STOR ./uploads/1.jsskill = {
+}
+kill = {
     audio: 2,
     enable: ["chooseToUse", "chooseToRespond"],
     prompt: "将♦牌当做杀，♥牌当做桃，♣牌当做闪，♠牌当做无懈可击使用或打出",

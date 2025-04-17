@@ -2,8 +2,11 @@
 #include <iostream>
 #include <sys/socket.h>
 #include <unistd.h>
-#include "cmd.cc"
-#include "respond_fd.hpp"
+void sendResponse(int code, const std::string &message, int client_fd)
+{
+    std::string response = std::to_string(code) + " " + message + "\r\n";
+    send(client_fd, response.c_str(), response.size(), 0);
+}
 class secv
 {
 public:
@@ -27,18 +30,18 @@ public:
             {
                 perror("write");
                 close(write_fd);
-                sendResponse(550, "Write error during file transfer.\r\n", read_fd);
+                sendResponse(550, "Write error during file transfer.", read_fd);
                 return -1;
             }
         }
         if (read_bytes == 0){
             // 文件读完了
-            sendResponse(226, "Transfer complete.\r\n",read_fd);
+            sendResponse(226, "Transfer complete.",read_fd);
             return 0;
         }
         else{
             // 读出错
-            sendResponse(451, "Read error during file transfer.\r\n",read_fd);
+            sendResponse(451, "Read error during file transfer.",read_fd);
             return -1;
         }
     }
