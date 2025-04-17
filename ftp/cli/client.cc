@@ -1,4 +1,4 @@
-#include "net.cc"
+#include "net.hpp"
 #include <string>
 #include "threadpool.hpp"
 const int cmdPORT = 1026;
