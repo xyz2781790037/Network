@@ -16,7 +16,9 @@ class cmd
         std::string filename = args.substr(filepos + 1);
         std::string path = args.substr(0, filepos);
         cwd(path, fd);
-        int file_fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        char filname[filename.size()];
+        strcpy(filname, filename.c_str());
+        int file_fd = open(filname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (file_fd < 0)
         {
             perror("open");
