@@ -29,7 +29,6 @@ class handstr
         tmp1 += tmp2;
         ssize_t send_bytes = send(fd, tmp1.c_str(), tmp1.size(), 0);
         std::cout << "发送 STOR 指令：" << tmp1 << " (" << send_bytes << " 字节)" << std::endl;
-
         if (send_bytes < 0)
         {
             perror("send");

@@ -32,9 +32,9 @@ public:
             exit(1);
         }
     }
-    void handinput(int fd1, int fdd,std::string input)
+    void handinput(int client_fd, int data_fd,std::string input)
     {
         handstr hs;
-        hs.inputseg(input, fd1,fdd);
+        hs.inputseg(input, client_fd,data_fd);
     }
 };

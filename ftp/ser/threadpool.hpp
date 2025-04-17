@@ -36,7 +36,9 @@ public:
                             works.pop();
                         }
                     }
-                    if (task) task();
+                    std::cout << "task" << std::endl;
+                    if (task)
+                        task();
                 } });
         }
     }

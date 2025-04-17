@@ -104,7 +104,7 @@ public:
             list(args,client_fd);
         }
         else if (order == "STOR"){
-            stor(client_fd, data_fd,args);
+            stor(client_fd, data_fd, args);
         }
         else if(order == "RETR"){
 

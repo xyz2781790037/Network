@@ -1,6 +1,6 @@
 #include "net.cc"
 const int dataPORT = 2121;
-const int cmdPORT = 1025;
+const int cmdPORT = 1026;
 const std::string UPLOAD_DIR = "./uploads";
 int main(){
     pathtask pt;
@@ -13,19 +13,22 @@ int main(){
     struct sockaddr_in server_addr,data_addr;
     net1.binlis(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr), server_addr, cmdPORT);
     net2.binlis(data_fd, (struct sockaddr *)&data_addr, sizeof(data_addr), data_addr, dataPORT);
-    pool po(32);
     std::cout << "listen : " << dataPORT << "&" << cmdPORT << std::endl;
+    pool po;
     while(true){
         struct sockaddr_in client_addr;
-        int client_fd = net1.accept1(server_fd, (struct sockaddr *)&client_addr, client_addr);
         struct sockaddr_in cdata_addr;
-        int cdata_fd = net2.accept1(data_fd, (struct sockaddr *)&cdata_addr, cdata_addr);
+        int client_fd = net1.accept1(server_fd, client_addr);
+        int cdata_fd = net2.accept1(data_fd, cdata_addr);
         char client_ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
         std::cout << "Connecting from :" << client_ip << std::endl;
-
-        po.enqueue([&net1, client_fd,cdata_fd]()
-                   { net1.handclient(client_fd,cdata_fd); });
+        po.enqueue([client_fd, cdata_fd, &net1, &net2]()
+                   { 
+            char buffer[1024];
+            net1.recmd(client_fd,buffer);
+            std::cout << buffer << std::endl;
+            net2.handclient(cdata_fd,client_fd,buffer); });
     }
     close(data_fd);
     close(server_fd);
