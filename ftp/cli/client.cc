@@ -1,8 +1,8 @@
 #include "net.cc"
 #include <string>
 #include "threadpool.hpp"
-const int cmdPORT = 2121;
-const int dataPORT = 1025;
+const int cmdPORT = 1026;
+const int dataPORT = 2121;
 const int BUFFER_MAXSIZE = 1024;
 const std::string UPLOAD_DIR = "./uploads";
 const char* SERVER_IP = "127.0.0.1";
@@ -25,6 +25,9 @@ int main()
         getline(std::cin, input);
         if(input == "exit"){
             break;
+        }
+        if(input.empty()){
+            continue;
         }
         po.enqueue([&net1, client_fd, data_fd, input]() mutable
                    { net1.handinput(client_fd, data_fd, input); });

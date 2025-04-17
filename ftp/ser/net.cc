@@ -37,7 +37,7 @@ public:
             exit(1);
         }
     }
-    int accept1(int fd, sockaddr *__restrict__ __addr, struct sockaddr_in client_addr)
+    int accept1(int fd,struct sockaddr_in& client_addr)
     {
         socklen_t cli_sock_len = sizeof(client_addr);
         int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &cli_sock_len);
@@ -48,14 +48,14 @@ public:
         }
         return client_fd;
     }
-    void handclient(int client_fd, int data_fd)
-    {
+    void recmd(int client_fd,char* buffer){
         secv person;
-        cmd sendorder;
-        char buffer[BUFFER_MAXSIZE];
         person.recv1(client_fd, buffer, BUFFER_MAXSIZE, 0);
-        std::cout << "Received command: " << buffer << std::endl;
-        std::string order((char *)buffer);
+    }
+    void handclient(int data_fd,int client_fd,char *buffer)
+    {
+        cmd sendorder;
+        std::string order(buffer);
         sendorder.handcmd(order, client_fd,data_fd);
     }
 };
