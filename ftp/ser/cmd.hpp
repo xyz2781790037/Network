@@ -1,21 +1,15 @@
 #pragma once
-#include <iostream>
+#include "secv.hpp"
 #include <filesystem>
-#include <sys/socket.h>
-#include <unistd.h>
 #include <fcntl.h>
 #include <vector>
-#include <sys/stat.h>
 #include <dirent.h>
 #include <string.h>
 #include <functional>
-#include "ispath.cc"
-#include "respond_fd.hpp"
-#include "secv.cc"
-class secv;
+#include "ispath.hpp"
 class cmd
 {
-    secv *refile = new secv();
+    secv refile;
     pathtask handp;
     void stor(int fd,int fdd,std::string args){
         size_t filepos = args.find_last_of('/');
@@ -26,11 +20,11 @@ class cmd
         if (file_fd < 0)
         {
             perror("open");
-            sendResponse(550, "Failed to open file for writing.\r\n",fd);
+            sendResponse(550, "Failed to open file for writing.",fd);
             return;
         }
         sendResponse(150, "The file can be transferred now", fd);
-        refile->send1(fdd, file_fd, 1024);
+        refile.send1(fdd, file_fd, 1024);
     }
     void cwd(std::string args,int client_fd){
         send(client_fd, "uping...", 8, 0);

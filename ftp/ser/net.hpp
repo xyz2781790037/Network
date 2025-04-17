@@ -1,10 +1,7 @@
 #pragma once
-#include <iostream>
 #include <netinet/in.h>
-#include <sys/socket.h>
 #include <arpa/inet.h>
-#include <unistd.h>
-#include "cmd.cc"
+#include "cmd.hpp"
 #include "threadpool.hpp"
 const int BUFFER_MAXSIZE = 1024;
 class Net{
