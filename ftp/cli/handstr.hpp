@@ -5,8 +5,10 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <fcntl.h>
+#include "resv.hpp"
 class handstr
 {
+    resv sre;
     std::string segstrspace(std::string &order, int count = 0)
     {
         while (count < order.size())
@@ -22,29 +24,19 @@ class handstr
         }
         return order;
     }
-    void storhelper(std::string input,int fd,int data_fd){
+    void storhelper(std::string input, int fd, int data_fd)
+    {
+
         size_t pathpos = input.find_first_of(' ');
         size_t pathpos2 = input.find_last_of(' ');
         std::string tmp1 = input.substr(0, pathpos);
         std::string tmp2 = input.substr(pathpos2);
         tmp1 += tmp2;
-        ssize_t send_bytes = send(fd, tmp1.c_str(), tmp1.size(), 0);
-        std::cout << "发送 STOR 指令：" << tmp1 << " (" << send_bytes << " 字节)" << std::endl;
-        if (send_bytes < 0)
-        {
-            perror("send");
-            return;
-        }
-        char buffer[1024];
-        ssize_t recv_bytes = recv(fd, buffer, 1024, 0);
-        if (recv_bytes < 0)
-        {
-            perror("recv");
-            return;
-        }
-        std::cout << "recv:" << buffer << std::endl;
+        ssize_t send_bytes = sre.send1(fd, tmp1, tmp1.size(), 0,"send1");
+        std::string buffer;
+        ssize_t recv_bytes = sre.recv1(fd, buffer, 1024, 0,"send1");
         std::string filename = input.substr(pathpos + 1, pathpos2 - pathpos - 1);
-        
+
         stor(filename, data_fd);
     }
     void stor(std::string filename, int data_fd)
@@ -57,43 +49,55 @@ class handstr
             perror("open");
             return;
         }
+        std::cout << "filename :" << filname << std::endl;
         struct stat st;
         fstat(file_fd, &st);
         sendfile(data_fd, file_fd, NULL, st.st_size);
-        char buffer[1024];
-        ssize_t recv_bytes = recv(data_fd, buffer, 1024, 0);
-        if (recv_bytes < 0)
-        {
-            perror("recv");
-            return;
-        }
-        std::cout << buffer << std::endl;
+        shutdown(data_fd, SHUT_WR);
+        std::string buffer;
+        ssize_t recv_bytes = sre.recv1(data_fd, buffer, 1024, 0,"recv sendfile");
     }
-    void cdsend(int fd,std::string input){
-        int send_bytes = send(fd, input.c_str(), input.size(), 0);
-        if(send_bytes < 0){
-            perror("send");
-            return;
-        }
+    void cdsend(int fd, std::string input)
+    {
+        int send_bytes = sre.send1(fd, input, input.size(), 0,"send");
+        std::string buffer;
+        ssize_t recv_bytes = sre.recv1(fd, buffer, 1024, 0,"recv");
+    }
+    void list(std::string input,int fd,int data_fd){
+        int send_bytes = sre.send1(fd, input, input.size(), 0, "send1");
+        std::string buffer;
+        int recv_bytes = sre.recv1(fd, buffer,1024,0,"recv list");
+        recvlist(data_fd);
+    }
+    void recvlist(int data_fd){
         char buffer[1024];
-        ssize_t recv_bytes = recv(fd, buffer, 1024, 0);
-        if (recv_bytes < 0)
+        ssize_t bytes;
+        while ((bytes = recv(data_fd, buffer, sizeof(buffer) - 1, 0)) > 0)
         {
-            perror("recv");
-            return;
+            buffer[bytes] = '\0';
+            std::cout << buffer;
+        }
+        if (bytes == 0)
+        {
+            sre.send1(data_fd, "send ok", sizeof("send ok"), 0, "send ok");
+        }
+        else if (bytes < 0)
+        {
+            perror("接收失败");
         }
     }
-
 public:
-    void inputseg(std::string &input, int&fd,int&data_fd)
+    void inputseg(std::string &input, int &fd, int &data_fd,bool &flag)
     {
         input = segstrspace(input);
         size_t pathpos = input.find_first_of(' ');
         std::string order;
-        if(pathpos < 0){
+        if (pathpos < 0)
+        {
             order = input;
         }
-        else{
+        else
+        {
             order = input.substr(0, pathpos);
         }
         if (order == "PASV")
@@ -101,23 +105,21 @@ public:
         }
         else if (order == "ACTION")
         {
+
         }
         else if (order == "LIST")
         {
-            cdsend(fd, input);
+            list(input, fd, data_fd);
+
         }
         else if (order == "STOR")
         {
-            storhelper(input,fd,data_fd);
+            storhelper(input, fd, data_fd);
         }
         else if (order == "RETR")
         {
         }
         else if (order == "MKD")
-        {
-            cdsend(fd,input);
-        }
-        else if (order == "CWD")
         {
             cdsend(fd, input);
         }
@@ -126,5 +128,6 @@ public:
             // std::cout << "error input" << std::endl;
             // sendResponse(500, "invalid commend", client_fd);
         }
+        flag = false;
     }
 };

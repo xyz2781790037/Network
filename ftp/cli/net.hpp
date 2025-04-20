@@ -3,10 +3,13 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include "handstr.hpp"
-class Net{
+class Net
+{
     int client_fd;
+
 public:
-    int socket1(int domain, int type, int protocol){
+    int socket1(int domain, int type, int protocol)
+    {
         client_fd = socket(AF_INET, SOCK_STREAM, 0);
         if (client_fd < 0)
         {
@@ -15,7 +18,7 @@ public:
         }
         return client_fd;
     }
-    void connect1(int af, const char *SERVER_IP, struct sockaddr_in use_addr,int PORT)
+    void connect1(int af, const char *SERVER_IP, struct sockaddr_in use_addr, int PORT)
     {
         use_addr.sin_family = AF_INET;
         use_addr.sin_port = htons(PORT);
@@ -32,9 +35,9 @@ public:
             exit(1);
         }
     }
-    void handinput(int client_fd, int data_fd,std::string input)
+    void handinput(int client_fd, int data_fd, std::string input,bool &runflag)
     {
         handstr hs;
-        hs.inputseg(input, client_fd,data_fd);
+        hs.inputseg(input, client_fd, data_fd,runflag);
     }
 };
