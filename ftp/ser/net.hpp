@@ -1,11 +1,12 @@
-#pragma once
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "cmd.hpp"
 #include "threadpool.hpp"
 const int BUFFER_MAXSIZE = 1024;
-class Net{
+class Net
+{
     int server_fd;
+
 public:
     int socket1(int domain, int type, int protocol)
     {
@@ -17,7 +18,8 @@ public:
         }
         return server_fd;
     }
-    void binlis(int fd, const sockaddr *addr, socklen_t len,struct sockaddr_in server_addr,int PORT){
+    void binlis(int fd, const sockaddr *addr, socklen_t len, struct sockaddr_in server_addr, int PORT)
+    {
         server_addr.sin_family = AF_INET;
         server_addr.sin_port = htons(PORT);
         server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -34,7 +36,7 @@ public:
             exit(1);
         }
     }
-    int accept1(int fd,struct sockaddr_in& client_addr)
+    int accept1(int fd, struct sockaddr_in &client_addr)
     {
         socklen_t cli_sock_len = sizeof(client_addr);
         int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &cli_sock_len);
@@ -45,14 +47,15 @@ public:
         }
         return client_fd;
     }
-    void recmd(int client_fd,char* buffer){
+    void recmd(int client_fd, char *buffer)
+    {
         secv person;
         person.recv1(client_fd, buffer, BUFFER_MAXSIZE, 0);
     }
-    void handclient(int data_fd,int client_fd,char *buffer)
+    void handclient(int data_fd, int client_fd, char *buffer)
     {
         cmd sendorder;
         std::string order(buffer);
-        sendorder.handcmd(order, client_fd,data_fd);
+        sendorder.handcmd(order, client_fd, data_fd);
     }
 };
