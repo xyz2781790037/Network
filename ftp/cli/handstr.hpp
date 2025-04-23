@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <atomic>
 #include <sys/socket.h>
 #include <sys/sendfile.h>
 #include <sys/stat.h>
@@ -34,7 +35,7 @@ class handstr
         tmp1 += tmp2;
         ssize_t send_bytes = sre.send1(fd, tmp1, tmp1.size(), 0,"send1");
         std::string buffer;
-        ssize_t recv_bytes = sre.recv1(fd, buffer, 1024, 0,"send1");
+        ssize_t recv_bytes = sre.recv1(fd, buffer, 1024, 0,"recv1");
         std::string filename = input.substr(pathpos + 1, pathpos2 - pathpos - 1);
 
         stor(filename, data_fd);
@@ -52,10 +53,19 @@ class handstr
         std::cout << "filename :" << filname << std::endl;
         struct stat st;
         fstat(file_fd, &st);
-        sendfile(data_fd, file_fd, NULL, st.st_size);
-        shutdown(data_fd, SHUT_WR);
+        int bytes = sendfile(data_fd, file_fd, NULL, st.st_size);
+        // shutdown(data_fd, SHUT_WR);
+        if(bytes == -1){
+            perror("sendfile");
+            if (errno == EPIPE || errno == ECONNRESET)
+            {
+                std::cerr << "Server closed connection early" << std::endl;
+                return;
+            }
+        }
         std::string buffer;
         ssize_t recv_bytes = sre.recv1(data_fd, buffer, 1024, 0,"recv sendfile");
+        
     }
     void cdsend(int fd, std::string input)
     {
@@ -87,7 +97,7 @@ class handstr
         }
     }
 public:
-    void inputseg(std::string &input, int &fd, int &data_fd,bool &flag)
+    void inputseg(std::string &input, int &fd, int &data_fd)
     {
         input = segstrspace(input);
         size_t pathpos = input.find_first_of(' ');
@@ -102,10 +112,6 @@ public:
         }
         if (order == "PASV")
         {
-        }
-        else if (order == "ACTION")
-        {
-
         }
         else if (order == "LIST")
         {
@@ -128,6 +134,5 @@ public:
             // std::cout << "error input" << std::endl;
             // sendResponse(500, "invalid commend", client_fd);
         }
-        flag = false;
     }
 };

@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <string.h>
 #include <functional>
+#include <atomic>
 #include "ispath.hpp"
 class cmd
 {
@@ -88,22 +89,19 @@ class cmd
             }
             dprintf(data_fd, "%s\n", file[i]->d_name);
         }
-        shutdown(data_fd, SHUT_WR);
-        char buf[1024];
+        // shutdown(data_fd, SHUT_WR);
+        std::string buf;
         refile.recv1(data_fd, buf, 1024, 0);
         std::cout << buf << std::endl;
     }
 
 public:
-    void handcmd(std::string orders, int client_fd, int data_fd)
+    void handcmd(std::string orders, int client_fd, int data_fd,std::atomic<bool> &flag)
     {
         ssize_t cmdspace = orders.find_first_of(' ');
         std::string order = orders.substr(0, cmdspace);
         std::string args = orders.substr(cmdspace + 1);
         if (order == "PASV")
-        {
-        }
-        else if (order == "ACTION")
         {
         }
         else if (order == "LIST")
