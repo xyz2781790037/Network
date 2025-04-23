@@ -14,22 +14,36 @@ void sendResponse(int code, const std::string &message, int client_fd)
 class secv
 {
 public:
-    int recv1(int &fd, char *buf, size_t n, int flags)
+    int recv1(int fd, std::string &buff, size_t n, int flags)
     {
+        char buf[1024];
         int recv_cmd = recv(fd, buf, n, flags);
-        if (recv_cmd <= 0)
+
+        if (recv_cmd < 0)
         {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+                return 0;
+            }
             perror("recvcmd");
-            sendResponse(421, "Control connection error", fd);
-            close(fd);
+            return -1; // 真正出错
         }
+        else if (recv_cmd == 0)
+        {
+            // 客户端断开连接
+            return -2;
+        }
+
         buf[recv_cmd] = '\0';
+        buff = std::string(buf);
         return recv_cmd;
     }
     int send1(int &read_fd, int &write_fd, size_t n)
     {
         char buffer[1024];
         int read_bytes = 0;
+        int index_read = 5;
+    READ:
         std::cout << "reading " << std::endl;
         while ((read_bytes = read(read_fd, buffer, n)) > 0)
         {
@@ -43,13 +57,24 @@ public:
         }
         if (read_bytes == 0)
         {
-            // 文件读完了
+            std::cout << "read end" << std::endl;
             sendResponse(226, "Transfer complete.", read_fd);
             return 0;
         }
         else
         {
-            // 读出错
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+                if(index_read > 0){
+                    sleep(1);
+                    index_read--;
+                    goto READ;
+                }
+                else{
+                    return 0;
+                }
+            }
+            std::cout << "read fail" << std::endl;
             sendResponse(451, "Read error during file transfer.", read_fd);
             return -1;
         }

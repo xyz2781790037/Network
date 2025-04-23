@@ -20,8 +20,9 @@ public:
         strcpy(buffer, buf.c_str());
         int recv_bytes = recv(fd, buffer, n, flag);
         if(recv_bytes <= 0){
+            std::cout << "perror ";
             perror(a);
-            exit(1);
+            return 0;
         }
         std::cout << a << ": " << buffer << std::endl;
         return recv_bytes;

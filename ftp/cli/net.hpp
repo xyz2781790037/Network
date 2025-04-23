@@ -18,7 +18,7 @@ public:
         }
         return client_fd;
     }
-    void connect1(int af, const char *SERVER_IP, struct sockaddr_in use_addr, int PORT)
+    void connect1(int fd, const char *SERVER_IP, struct sockaddr_in use_addr, int PORT)
     {
         use_addr.sin_family = AF_INET;
         use_addr.sin_port = htons(PORT);
@@ -35,9 +35,10 @@ public:
             exit(1);
         }
     }
-    void handinput(int client_fd, int data_fd, std::string input,bool &runflag)
+    void handinput(int client_fd, int data_fd, std::string input,std::atomic<bool> &runflag)
     {
         handstr hs;
-        hs.inputseg(input, client_fd, data_fd,runflag);
+        hs.inputseg(input, client_fd, data_fd);
+        runflag = false;
     }
 };

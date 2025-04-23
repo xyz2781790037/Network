@@ -84,7 +84,7 @@ int main(){
                 char buffer[BUFFER_SIZE];
                 while(true){
                     int bytes_read = read(fd, buffer, BUFFER_SIZE);
-                    if(bytes_read < 0){
+                    if(bytes_read <= 0){
                         if(bytes_read == 0 || (errno != EAGAIN && errno != EWOULDBLOCK)){
                             std::cout << "Client disconnected :" << fd << std::endl;
                             close(fd);
