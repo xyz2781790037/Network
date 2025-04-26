@@ -6,6 +6,7 @@
 #include <string.h>
 #include <functional>
 #include <atomic>
+#include <sys/sendfile.h>
 #include "ispath.hpp"
 class cmd
 {
@@ -50,9 +51,10 @@ class cmd
         bw[strlen((*b)->d_name) - 1] = '\0';
         return strcasecmp(aw, bw);
     }
-    void list(std::string path, int fd,int data_fd)
+    void list(std::string path, int &fd,int &data_fd)
     {
         sendResponse(250, "this list is ready", fd);
+        std::cout << data_fd << std::endl;
         struct stat st;
         char result[1024];
         struct dirent **file;
@@ -94,6 +96,22 @@ class cmd
         refile.recv1(data_fd, buf, 1024, 0);
         std::cout << buf << std::endl;
     }
+    void retr(std::string path,int &client_fd,int &data_fd){
+        
+        char filname[path.size()];
+        strcpy(filname, path.c_str());
+        int file_fd = open(filname, O_RDONLY, 0644);
+        if (file_fd < 0)
+        {
+            perror("open");
+            return;
+        }
+        std::cout << "filename :" << filname << std::endl;
+        sendResponse(150, "The file can be transferred now", client_fd);
+        struct stat st;
+        fstat(file_fd, &st);
+        int bytes = sendfile(data_fd, file_fd, NULL, st.st_size);
+    }
 
 public:
     void handcmd(std::string orders, int client_fd, int data_fd,std::atomic<bool> &flag)
@@ -114,6 +132,7 @@ public:
         }
         else if (order == "RETR")
         {
+            retr(args,client_fd,data_fd);
         }
         else if (order == "MKD")
         {

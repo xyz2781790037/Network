@@ -1,6 +1,7 @@
 #include <iostream>
 #include <sys/socket.h>
 #include <cstring>
+#include <unistd.h>
 class resv{
 public:
 
@@ -26,5 +27,32 @@ public:
         }
         std::cout << a << ": " << buffer << std::endl;
         return recv_bytes;
+    }
+    int recvfile(int &read_fd, int &write_fd, size_t n)
+    {
+        char buffer[1024];
+        int read_bytes = 0;
+        std::cout << "reading " << std::endl;
+        while ((read_bytes = read(read_fd, buffer, n)) > 0)
+        {
+            if (write(write_fd, buffer, read_bytes) != read_bytes)
+            {
+                perror("write");
+                close(write_fd);
+                return -1;
+            }
+        }
+        if (read_bytes == 0)
+        {
+            std::cout << "read end" << std::endl;
+            send1(read_fd, "send ok", 7, 0, "send1");
+            return 0;
+        }
+        else
+        {
+            std::cout << "read fail" << std::endl;
+            send1(read_fd, "send file", 9, 0, "send1");
+            return -1;
+        }
     }
 };
