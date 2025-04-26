@@ -1,0 +1,6 @@
+#include "server.hpp"
+int main(){
+    FTP ftp;
+    ftp.run();
+    return 0;
+}

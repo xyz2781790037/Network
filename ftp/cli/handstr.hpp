@@ -27,7 +27,6 @@ class handstr
     }
     void storhelper(std::string input, int fd, int data_fd)
     {
-
         size_t pathpos = input.find_first_of(' ');
         size_t pathpos2 = input.find_last_of(' ');
         std::string tmp1 = input.substr(0, pathpos);
@@ -67,19 +66,19 @@ class handstr
         ssize_t recv_bytes = sre.recv1(data_fd, buffer, 1024, 0,"recv sendfile");
         
     }
-    void cdsend(int fd, std::string input)
+    void cdsend(int &fd, std::string input)
     {
         int send_bytes = sre.send1(fd, input, input.size(), 0,"send");
         std::string buffer;
         ssize_t recv_bytes = sre.recv1(fd, buffer, 1024, 0,"recv");
     }
-    void list(std::string input,int fd,int data_fd){
+    void list(std::string input,int &fd,int &data_fd){
         int send_bytes = sre.send1(fd, input, input.size(), 0, "send1");
         std::string buffer;
         int recv_bytes = sre.recv1(fd, buffer,1024,0,"recv list");
         recvlist(data_fd);
     }
-    void recvlist(int data_fd){
+    void recvlist(int &data_fd){
         char buffer[1024];
         ssize_t bytes;
         while ((bytes = recv(data_fd, buffer, sizeof(buffer) - 1, 0)) > 0)
@@ -96,6 +95,33 @@ class handstr
             perror("接收失败");
         }
     }
+    void retrhelper(std::string input,int &fd,int &dfd){
+        size_t filepos = input.find_last_of(' ');
+        std::string buffers = input.substr(0, filepos);
+        std::string path = input.substr(filepos + 1);
+        ssize_t send_bytes = sre.send1(fd, buffers, buffers.size(), 0, "send1");
+        std::cout << buffers << std::endl;
+        std::string str;
+        ssize_t recv_bytes = sre.recv1(fd, str, 1024, 0, "recv1");
+        std::cout << str << std::endl;
+        retr(path,dfd);
+    }
+    void retr(std::string args,int&dfd){
+        size_t filepos = args.find_last_of('/');
+        std::string filename = args.substr(filepos + 1);
+        std::string path = args.substr(0, filepos);
+        chdir(path.c_str());
+        char filname[filename.size()];
+        strcpy(filname, filename.c_str());
+        int file_fd = open(filname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (file_fd < 0)
+        {
+            perror("open");
+            return;
+        }
+        sre.recvfile(dfd, file_fd, 1024);
+    }
+
 public:
     void inputseg(std::string &input, int &fd, int &data_fd)
     {
@@ -116,7 +142,6 @@ public:
         else if (order == "LIST")
         {
             list(input, fd, data_fd);
-
         }
         else if (order == "STOR")
         {
@@ -124,6 +149,7 @@ public:
         }
         else if (order == "RETR")
         {
+            retrhelper(input, fd, data_fd);
         }
         else if (order == "MKD")
         {

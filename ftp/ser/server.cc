@@ -67,6 +67,7 @@ int main()
                             if (stored_ip == ip)
                             {
                                 data_map[cmd_fd] = cdata_fd;
+                                std::cout << cdata_fd << std::endl;
                                 break;
                             }
                         }
@@ -91,6 +92,7 @@ int main()
                         close(dfd);
                         epol.epoll_ctl3(epoll_fd, dfd);
                         data_map.erase(fd);
+                        std::cout << "客户端断开（fd " << dfd << "）" << std::endl;
                     }
                     else{
                         sendResponse(425, "No data connection established.", fd);

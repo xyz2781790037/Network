@@ -40,14 +40,15 @@ public:
     }
     int send1(int &read_fd, int &write_fd, size_t n)
     {
-        char buffer[1024];
+        // char buffers[1024];
         int read_bytes = 0;
         int index_read = 5;
     READ:
+        char buffers[1024];
         std::cout << "reading " << std::endl;
-        while ((read_bytes = read(read_fd, buffer, n)) > 0)
+        while ((read_bytes = read(read_fd, buffers, n)) > 0)
         {
-            if (write(write_fd, buffer, read_bytes) != read_bytes)
+            if (write(write_fd, buffers, read_bytes) != read_bytes)
             {
                 perror("write");
                 close(write_fd);
