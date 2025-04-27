@@ -8,8 +8,11 @@ const char *SERVER_IP = "127.0.0.1";
 const std::string COLOUR1 = "\033[1;36m";
 const std::string COLOUR2 = "\033[0m";
 class FTP{
-    void run();
+private:
     void cycle(std::atomic<bool> &pasv,int &client_fd);
+
+public:
+    void run();
 };
 void FTP::run(){
     Net net;
@@ -56,10 +59,17 @@ void FTP::cycle(std::atomic<bool> &pasv,int &client_fd){
         {
             continue;
         }
-        po.enqueue([client_fd, data_fd, input, &runflag]() mutable
+        input += "\r\n";
+        po.enqueue([client_fd, data_fd, input, &runflag,&pasv]() mutable
                    { Cmd cmd;
-            cmd.handle_input();
+            cmd.handle_input(input,client_fd,data_fd,pasv);
             runflag = false;
                  });
+        while (runflag)
+        {
+            sleep(1);
+        }
+        close(data_fd);
     }
+    close(client_fd);
 }

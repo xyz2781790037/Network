@@ -11,8 +11,8 @@ public:
     void connect1(int fd, const char *SERVER_IP, struct sockaddr_in use_addr, int PORT);
     void binlis(int &sock_fd, socklen_t len, struct sockaddr_in &server_addr, int PORT);
     int accept1(int &sock_fd, struct sockaddr_in &client_addr);
-    int send1(int fd, std::string buf, int n, int flag, const char *a);
-    int recv1(int fd, std::string buf, int n, int flag, const char *a);
+    int send1(int fd, std::string &buf, int n, int flag, const char *a);
+    int recv1(int fd, std::string &buf, int n, int flag, const char *a);
     int recvfile(int &read_fd, int &write_fd, size_t n);
 };
 int Net::socket1(int domain, int type, int protocol){
@@ -20,7 +20,7 @@ int Net::socket1(int domain, int type, int protocol){
     if (client_fd < 0)
     {
         perror("socket");
-        return;
+        return -1;
     }
     return client_fd;
 } 
@@ -70,7 +70,7 @@ int Net::accept1(int &sock_fd, struct sockaddr_in &client_addr)
     }
     return client_fd;
 }
-int Net:: send1(int fd, std::string buf, int n, int flag, const char *a){
+int Net::send1(int fd, std::string &buf, int n, int flag, const char *a){
     char buffer[n];
     strcpy(buffer, buf.c_str());
     int send_bytes = send(fd, buffer, n, flag);
@@ -82,9 +82,8 @@ int Net:: send1(int fd, std::string buf, int n, int flag, const char *a){
     std::cout << a << ": " << buffer << std::endl;
     return send_bytes;
 }
-int Net::recv1(int fd, std::string buf, int n, int flag, const char *a){
-    char buffer[n];
-    strcpy(buffer, buf.c_str());
+int Net::recv1(int fd, std::string &buf, int n, int flag, const char *a){
+    char buffer[n + 1];
     int recv_bytes = recv(fd, buffer, n, flag);
     if (recv_bytes <= 0)
     {
@@ -92,6 +91,8 @@ int Net::recv1(int fd, std::string buf, int n, int flag, const char *a){
         perror("recv1");
         return 0;
     }
+    buffer[recv_bytes] = '\0';
+    buf = buffer;
     std::cout << a << ": " << buffer << std::endl;
     return recv_bytes;
 }
@@ -111,13 +112,17 @@ int Net::recvfile(int &read_fd, int &write_fd, size_t n){
     if (read_bytes == 0)
     {
         std::cout << "read end" << std::endl;
-        send1(read_fd, "send ok", 7, 0, "send1");
+        std::string sent = "send ok";
+        close(write_fd);
+        send1(read_fd, sent, 7, 0, "send1");
         return 0;
     }
     else
     {
         std::cout << "read fail" << std::endl;
-        send1(read_fd, "send file", 9, 0, "send1");
+        std::string sent = "send file";
+        close(write_fd);
+        send1(read_fd, sent, 9, 0, "send1");
         return -1;
     }
 }

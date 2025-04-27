@@ -123,12 +123,14 @@ int Net::recvfile(int &read_fd, int &write_fd, size_t n) {
     if (read_bytes == 0)
     {
         std::cout << "read end" << std::endl;
+        close(write_fd);
         send_Response(226, "Transfer complete.", read_fd);
         return 0;
     }
     else
     {
         std::cout << "read fail" << std::endl;
+        close(write_fd);
         send_Response(451, "Read error during file transfer.", read_fd);
         return -1;
     }
