@@ -125,7 +125,7 @@ void Cmd::retr(std::string path, int &client_fd, int &data_fd){
     struct stat st;
     fstat(file_fd, &st);
     off_t offset = 0;
-    ssize_t bytes_sent;
+    ssize_t bytes_sent = 0;
     while (offset < st.st_size){
         bytes_sent = sendfile(data_fd, file_fd, &offset, 1024);
         if(bytes_sent < 0){
@@ -137,6 +137,7 @@ void Cmd::retr(std::string path, int &client_fd, int &data_fd){
             break;
         }
     }
+    close(file_fd);
 }
 void Cmd::list(std::string path, int &fd, int &data_fd){
     net.send_Response(250, "this list is ready", fd);
