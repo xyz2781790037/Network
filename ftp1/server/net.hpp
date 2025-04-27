@@ -2,7 +2,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <atomic>
+#include <map>
 #include <unistd.h>
+const int dataPORT = 2121;
+const int cmdPORT = 1026;
+std::map<int, std::string> clients;
 class Net{
 public:
     int socket1(int domain, int type, int protocol);
@@ -12,7 +16,7 @@ public:
     void send_Response(int code, const std::string &message, int client_fd);
     int recv1(int fd, std::string &buff, size_t n, int flags);
     int recvfile(int &read_fd, int &write_fd, size_t n);
-    void handle_client(int &data_fd, int &sock_fd, std::string input,std::atomic<bool> &runflag);
+    void handle_client(int &data_fd, int &sock_fd, std::string input, std::atomic<bool> &runflag, std::atomic<bool> &pasv);
 };
 int Net::socket1(int domain, int type, int protocol){
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -62,7 +66,7 @@ int Net::accept1(int &sock_fd, struct sockaddr_in &client_addr){
     }
     return client_fd;
 }
-void Net::connect1(int &fd, const char *SERVER_IP, struct sockaddr_in use_addr, int PORT)
+void Net::connect1(int &fd,const char *SERVER_IP, struct sockaddr_in use_addr, int PORT)
 {
     use_addr.sin_family = AF_INET;
     use_addr.sin_port = htons(PORT);
@@ -70,18 +74,18 @@ void Net::connect1(int &fd, const char *SERVER_IP, struct sockaddr_in use_addr, 
     {
         perror("inet_pton");
         close(fd);
-        exit(1);
+        return;
     }
     if (connect(fd, (struct sockaddr *)&use_addr, sizeof(use_addr)) < 0)
     {
         perror("connect");
         close(fd);
-        exit(1);
+        return;
     }
 }
 int Net::recv1(int fd, std::string &buff, size_t n, int flags)
 {
-    char buf[1024];
+    char buf[1025];
     int recv_cmd = recv(fd, buf, n, flags);
 
     if (recv_cmd < 0)
@@ -129,8 +133,3 @@ int Net::recvfile(int &read_fd, int &write_fd, size_t n) {
         return -1;
     }
 };
-void Net::handle_client(int &data_fd, int &sock_fd, std::string input, std::atomic<bool> &runflag){
-    Cmd cmd;
-    cmd.handcmd(input, sock_fd, data_fd);
-    runflag = false;
-}
