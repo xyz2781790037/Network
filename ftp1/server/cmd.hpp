@@ -53,16 +53,18 @@ class Cmd{
     void stor(int &fd, int &fdd, std::string args);
 
 public:
-    void handcmd(std::string orders, int &client_fd, int &data_fd);
+    void handcmd(std::string orders, int &client_fd, int &data_fd, std::atomic<bool> &pasv);
     void retr(std::string path, int &client_fd, int &data_fd);
     void list(std::string path, int &fd, int &data_fd);
 };
-void Cmd::handcmd(std::string orders, int &client_fd, int &data_fd){
+void Cmd::handcmd(std::string orders, int &client_fd, int &data_fd, std::atomic<bool> &pasv)
+{
     ssize_t cmdspace = orders.find_first_of(' ');
     std::string order = orders.substr(0, cmdspace);
     std::string args = orders.substr(cmdspace + 1);
     if (order == "PASV")
     {
+        pasv = true;
     }
     else if (order == "LIST")
     {
@@ -122,7 +124,19 @@ void Cmd::retr(std::string path, int &client_fd, int &data_fd){
     net.send_Response(150, "The file can be transferred now", client_fd);
     struct stat st;
     fstat(file_fd, &st);
-    int bytes = sendfile(data_fd, file_fd, NULL, st.st_size);
+    off_t offset = 0;
+    ssize_t bytes_sent;
+    while (offset < st.st_size){
+        bytes_sent = sendfile(data_fd, file_fd, &offset, 1024);
+        if(bytes_sent < 0){
+            std::cerr << "Error send file" << std::endl;
+            close(file_fd);
+            return;
+        }
+        else if(bytes_sent == 0){
+            break;
+        }
+    }
 }
 void Cmd::list(std::string path, int &fd, int &data_fd){
     net.send_Response(250, "this list is ready", fd);
@@ -173,4 +187,10 @@ void Cmd::list(std::string path, int &fd, int &data_fd){
     std::string buf;
     net.recv1(data_fd, buf, 1024, 0);
     std::cout << buf << std::endl;
+}
+void Net::handle_client(int &data_fd, int &sock_fd, std::string input, std::atomic<bool> &runflag, std::atomic<bool> &pasv)
+{
+    Cmd cmd;
+    cmd.handcmd(input, sock_fd, data_fd, pasv);
+    runflag = false;
 }

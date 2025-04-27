@@ -2,15 +2,14 @@
 #include <map>
 #include "cmd.hpp"
 #include "threadpool.hpp"
-const int dataPORT = 2121;
-const int cmdPORT = 1026;
 const int MAX_EVENTS = 100;
+const char *SERVER_IP = "127.0.0.1";
 const std::string UPLOAD_DIR = "./uploads";
-std::map<int, std::string> clients;
+std::map<int, std::atomic<bool>> pasv_fd;
 class FTP{
     Net net1;
     Path path;
-    void epoll1(int &sock_fd,int &data_fd,Net &net1);
+    void epoll1(int &sock_fd,Net &net1);
     void set_notblocking(int&fd);
 
 public:
@@ -21,26 +20,16 @@ void FTP::set_notblocking(int&fd){
     fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 void FTP::run(){
-    std::atomic<bool> pasv = false;
     path.createDir(UPLOAD_DIR);
     int server_fd = net1.socket1(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in server_addr;
     net1.binlis(server_fd, sizeof(server_addr), server_addr, cmdPORT);
     set_notblocking(server_fd);
-    int data_fd = 0;
-    if (pasv)
-    {
-        data_fd = net1.socket1(AF_INET, SOCK_STREAM, 0);
-        struct sockaddr_in data_addr;
-        net1.binlis(data_fd,sizeof(data_addr), data_addr, dataPORT);
-    }
-    else{
-        
-    }
-    epoll1(server_fd,data_fd,net1);
+    epoll1(server_fd,net1);
 }
-void FTP::epoll1(int &sock_fd,int &data_fd,Net &net1){
+void FTP::epoll1(int &sock_fd,Net &net1){
     std::atomic<bool> runflag = false;
+    pasv_fd[sock_fd] = false;
     int epoll_fd = epoll_create1(0);
     if (epoll_fd < 0)
     {
@@ -68,26 +57,53 @@ void FTP::epoll1(int &sock_fd,int &data_fd,Net &net1){
                     int client_fd = net1.accept1(sock_fd, client_addr);
                     if (client_fd == -1)
                     {
-                        break;
+                        if (errno == EAGAIN || errno == EWOULDBLOCK){
+                            break;
+                        }
+                        else{
+                            perror("accept");
+                            continue;
+                        }
                     }
                     set_notblocking(client_fd);
                     epoll_event client_event;
+                    client_event.data.fd = client_fd;
+                    client_event.events = EPOLLIN | EPOLLRDHUP | EPOLLET;
                     epoll_ctl(epoll_fd, EPOLL_CTL_ADD,client_fd, &client_event);
                     std::cout << "New client connected: " << client_fd << std::endl;
                     clients[client_fd] = inet_ntoa(client_addr.sin_addr);
                 }
             }
             else{
-                sockaddr_in cdata_addr;
-                int cdata_fd = net1.accept1(data_fd, cdata_addr);
+                sockaddr_in data_addr,cdata_addr;
+                int data_fd = net1.socket1(AF_INET, SOCK_CLOEXEC, 0);
+                int cdata_fd = 0;
+                if (pasv_fd[sock_fd])
+                {
+                    net1.binlis(data_fd, sizeof(data_addr), data_addr, dataPORT);
+                    cdata_fd = net1.accept1(data_fd, cdata_addr);
+                    if (cdata_fd <= 0)
+                    {
+                        continue;
+                    }
+                }
+                else{
+                    net1.connect1(data_fd, clients[fd].c_str(), data_addr, dataPORT);
+                    cdata_fd = data_fd;
+                }
                 std::cout << "New client connected: " << cdata_fd << std::endl;
                 std::string buf;
                 int ret = net1.recv1(fd, buf, 1024, 0);
                 if(ret > 0){
                     std::cout << "命令：" << buf << std::endl;
-                    po.enqueue([&net1, buf, fd, cdata_fd, &runflag]() mutable
-                               { net1.handle_client(cdata_fd, fd, buf, runflag); });
-                    while(runflag){}
+                    std::atomic<bool> &pasv = pasv_fd[sock_fd];
+                    po.enqueue([buf, fd, cdata_fd, &runflag, &pasv]() mutable
+                               { 
+                                Net net;
+                                net.handle_client(cdata_fd, fd, buf, runflag,pasv); });
+                    while(runflag){
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    }
                     std::cout << "客户端断开（fd " << cdata_fd << "）" << std::endl;
                     close(cdata_fd);
                 }
