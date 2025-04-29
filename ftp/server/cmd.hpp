@@ -85,6 +85,7 @@ void Cmd::handcmd(std::string orders, int &client_fd, int &data_fd, std::atomic<
         {
             perror("mkdir");
             net.send_Response(550, "No such file or directory", client_fd);
+            return;
         }
         net.send_Response(250, "Directory created successfully", client_fd);
     }
@@ -138,19 +139,27 @@ void Cmd::retr(std::string path, int &client_fd, int &data_fd){
         }
     }
     close(file_fd);
+    shutdown(data_fd, SHUT_WR);
 }
 void Cmd::list(std::string path, int &fd, int &data_fd){
+    std::string ppath = "/home/zgyx/Network/ftp/server/";
     net.send_Response(250, "this list is ready", fd);
-    std::cout << data_fd << std::endl;
+    path = path.substr(2);
+    ppath += path;
+    std::cout << "path:" << ppath << std::endl;
     struct stat st;
     char result[1024];
     struct dirent **file;
-    int n = scandir(path.c_str(), &file, NULL, filesort);
+    int n = scandir(ppath.c_str(), &file, NULL, filesort);
+    if(n == -1){
+        perror("dir");
+    }
+    std::string list_one;
     for (int i = 0; i < n; i++)
     {
         memset(result, '\0', strlen(result));
-        sprintf(result, "%s/%s", path.c_str(), file[i]->d_name);
-        std::string list_one;
+        sprintf(result, "%s/%s", ppath.c_str(), file[i]->d_name);
+        list_one.clear();
         if (lstat(result, &st) != -1)
         {
             if (S_ISDIR(st.st_mode)) // 目录
@@ -177,14 +186,16 @@ void Cmd::list(std::string path, int &fd, int &data_fd){
             strftime(time_str, sizeof(time_str), "%m月 %d %H:%M", timeinfo);
             list_one += " ";
             list_one += time_str;
-            list_one += "\r\n";
+            memset(time_str, '\0', strlen(time_str));
         }
         list_one += " ";
         list_one += file[i]->d_name;
         char lists[1024];
         strcpy(lists, list_one.c_str());
+        std::cout << list_one << std::endl;
         send(data_fd, lists, list_one.size(), 0);
     }
+    shutdown(data_fd, SHUT_WR);
     std::string buf;
     net.recv1(data_fd, buf, 1024, 0);
     std::cout << buf << std::endl;

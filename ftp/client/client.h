@@ -21,7 +21,7 @@ void FTP::run(){
     struct sockaddr_in client_addr;
     net.connect1(client_fd, SERVER_IP, client_addr, cmdPORT);
     std::cout << "已连接到服务器" << SERVER_IP << " " << cmdPORT << std::endl;
-    pasv_fd[client_fd] = false;
+    pasv_fd[client_fd] = true;
     cycle(pasv_fd[client_fd],client_fd);
 }
 void FTP::cycle(std::atomic<bool> &pasv,int &client_fd){
@@ -40,6 +40,7 @@ void FTP::cycle(std::atomic<bool> &pasv,int &client_fd){
             std::cout << "已连接到服务器" << SERVER_IP << " " << dataPORT << std::endl;
         }
         else{
+            std::cout << pasv << std::endl;
             net.binlis(data_fd, sizeof(data_addr), data_addr, dataPORT);
             cdata_fd = net.accept1(data_fd, data_addr);
             if (cdata_fd <= 0)
@@ -59,16 +60,17 @@ void FTP::cycle(std::atomic<bool> &pasv,int &client_fd){
         {
             continue;
         }
-        input += "\r\n";
-        po.enqueue([client_fd, data_fd, input, &runflag,&pasv]() mutable
+        // input += "\r\n";
+        po.enqueue([client_fd, cdata_fd, input, &runflag,&pasv]() mutable
                    { Cmd cmd;
-            cmd.handle_input(input,client_fd,data_fd,pasv);
+            cmd.handle_input(input,client_fd,cdata_fd,pasv);
             runflag = false;
                  });
         while (runflag)
         {
             sleep(1);
         }
+        std::cout << "duan" << std::endl;
         close(data_fd);
     }
     close(client_fd);

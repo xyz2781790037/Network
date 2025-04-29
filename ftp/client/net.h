@@ -8,7 +8,7 @@
 class Net{
 public:
     int socket1(int domain, int type, int protocol);
-    void connect1(int fd, const char *SERVER_IP, struct sockaddr_in use_addr, int PORT);
+    void connect1(int fd, const char *SERVER_IP, struct sockaddr_in &use_addr, int PORT);
     void binlis(int &sock_fd, socklen_t len, struct sockaddr_in &server_addr, int PORT);
     int accept1(int &sock_fd, struct sockaddr_in &client_addr);
     int send1(int fd, std::string &buf, int n, int flag, const char *a);
@@ -24,7 +24,7 @@ int Net::socket1(int domain, int type, int protocol){
     }
     return client_fd;
 } 
-void Net::connect1(int client_fd, const char *SERVER_IP, struct sockaddr_in use_addr, int PORT)
+void Net::connect1(int client_fd, const char *SERVER_IP, struct sockaddr_in &use_addr, int PORT)
 {
     use_addr.sin_family = AF_INET;
     use_addr.sin_port = htons(PORT);
