@@ -159,9 +159,11 @@ void Cmd::retr_helper(std::string input, int &fd, int &dfd){
     retr(path, dfd);
 }
 void Cmd::retr(std::string args, int &dfd){
+    std::string path = "/home/zgyx/Network/ftp/client/";
     size_t filepos = args.find_last_of('/');
     std::string filename = args.substr(filepos + 1);
-    std::string path = args.substr(0, filepos);
+    std::string ppath = args.substr(0, filepos);
+    path += ppath;
     chdir(path.c_str());
     char filname[filename.size() + 1];
     strcpy(filname, filename.c_str());
