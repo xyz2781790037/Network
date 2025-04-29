@@ -190,9 +190,10 @@ void Cmd::list(std::string path, int &fd, int &data_fd){
         }
         list_one += " ";
         list_one += file[i]->d_name;
+        list_one += "\n";
         char lists[1024];
         strcpy(lists, list_one.c_str());
-        std::cout << list_one << std::endl;
+        std::cout << list_one;
         send(data_fd, lists, list_one.size(), 0);
     }
     shutdown(data_fd, SHUT_WR);

@@ -3,6 +3,7 @@
 #include "cmd.hpp"
 #include "threadpool.hpp"
 const int MAX_EVENTS = 100;
+const int ACTIONPORT = 2222;
 const char *SERVER_IP = "127.0.0.1";
 const std::string UPLOAD_DIR = "./uploads";
 std::map<int, std::atomic<bool>> pasv_fd;
@@ -29,11 +30,11 @@ void FTP::run()
     int data_fd = net1.socket1(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in server_addr, data_addr;
     net1.binlis(server_fd, sizeof(server_addr), server_addr, cmdPORT);
-    net1.binlis(data_fd, sizeof(data_addr), data_addr, dataPORT);
+    net1.binlis(data_fd, sizeof(data_addr), data_addr, ACTIONPORT);
     set_notblocking(server_fd);
     set_notblocking(data_fd);
     std::atomic<bool> runflag = false;
-    pasv_fd[server_fd] = true;
+    pasv_fd[server_fd] = false;
     int epoll_fd = epoll_create1(0);
     if (epoll_fd < 0)
     {
@@ -100,24 +101,24 @@ void FTP::run()
                     {
                         continue;
                     }
-                    if (!clients.empty())
-                    {
-                        std::string ip = inet_ntoa(cdata_addr.sin_addr);
-                        for (const auto &[cmd_fd, stored_ip] : clients)
-                        {
-                            if (stored_ip == ip)
-                            {
-                                data_map[cmd_fd] = cdata_fd;
-                                std::cout << cdata_fd << std::endl;
-                                break;
-                            }
-                        }
-                    }
                 }
                 else
                 {
-                    net1.connect1(data_fd, clients[fd].c_str(), data_addr, dataPORT);
-                    cdata_fd = data_fd;
+                    // net1.connect1(data_fd, clients[fd].c_str(), data_addr, ACTIONPORT);
+                    // cdata_fd = data_fd;
+                }
+                if (!clients.empty())
+                {
+                    std::string ip = inet_ntoa(cdata_addr.sin_addr);
+                    for (const auto &[cmd_fd, stored_ip] : clients)
+                    {
+                        if (stored_ip == ip)
+                        {
+                            data_map[cmd_fd] = cdata_fd;
+                            std::cout << cdata_fd << std::endl;
+                            break;
+                        }
+                    }
                 }
                 std::cout << "New data connected: " << cdata_fd << std::endl;
             }
