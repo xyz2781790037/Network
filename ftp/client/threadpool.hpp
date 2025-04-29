@@ -36,7 +36,6 @@ public:
                             works.pop();
                         }
                     }
-                    std::cout << "task" << std::endl;
                     if (task)
                         task();
                 } });

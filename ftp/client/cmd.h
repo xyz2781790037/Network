@@ -85,7 +85,7 @@ void Cmd::recvlist(int &data_fd)
     while ((bytes = recv(data_fd, buffer, 1024, 0)) > 0)
     {
         buffer[bytes] = '\0';
-        std::cout << buffer << std::endl;
+        std::cout << buffer;
     }
     if (bytes == 0)
     {

@@ -2,6 +2,7 @@
 #include "threadpool.hpp"
 const int cmdPORT = 1026;
 const int dataPORT = 2121;
+const int ACTIONPORT = 2222;
 const int BUFFER_MAXSIZE = 1024;
 const std::string UPLOAD_DIR = "./uploads";
 const char *SERVER_IP = "127.0.0.1";
@@ -21,7 +22,7 @@ void FTP::run(){
     struct sockaddr_in client_addr;
     net.connect1(client_fd, SERVER_IP, client_addr, cmdPORT);
     std::cout << "已连接到服务器" << SERVER_IP << " " << cmdPORT << std::endl;
-    pasv_fd[client_fd] = true;
+    pasv_fd[client_fd] = false;
     cycle(pasv_fd[client_fd],client_fd);
 }
 void FTP::cycle(std::atomic<bool> &pasv,int &client_fd){
@@ -31,23 +32,25 @@ void FTP::cycle(std::atomic<bool> &pasv,int &client_fd){
     std::atomic<bool> runflag = false;
     while(true){
         runflag = true;
-        struct sockaddr_in data_addr;
-        int data_fd = net.socket1(AF_INET, SOCK_STREAM, 0);
-        int cdata_fd = 0;
+        int data_fd = 0,cdata_fd = 0;
         if (pasv){
+            struct sockaddr_in data_addr;
+            data_fd = net.socket1(AF_INET, SOCK_STREAM, 0);
             cdata_fd = data_fd;
             net.connect1(data_fd, SERVER_IP, data_addr, dataPORT);
             std::cout << "已连接到服务器" << SERVER_IP << " " << dataPORT << std::endl;
         }
         else{
-            std::cout << pasv << std::endl;
-            net.binlis(data_fd, sizeof(data_addr), data_addr, dataPORT);
-            cdata_fd = net.accept1(data_fd, data_addr);
-            if (cdata_fd <= 0)
-            {
-                continue;
-            }
-            std::cout << "一连接到服务器" << SERVER_IP << " " << dataPORT << std::endl;
+            // struct sockaddr_in data_addr;
+            // data_fd = net.socket1(AF_INET, SOCK_STREAM, 0);
+            // net.binlis(data_fd, sizeof(data_addr), data_addr, ACTIONPORT);
+            // std::cout << pasv << std::endl;
+            // cdata_fd = net.accept1(data_fd, data_addr);
+            // if (cdata_fd <= 0)
+            // {
+            //     continue;
+            // }
+            // std::cout << "一连接到服务器" << SERVER_IP << " " << ACTIONPORT << std::endl;
         }
         std::cout << COLOUR1 << "ftp> " << COLOUR2;
         getline(std::cin, input);
