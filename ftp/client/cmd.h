@@ -80,12 +80,12 @@ void Cmd::list(std::string input, int &fd, int &data_fd)
 }
 void Cmd::recvlist(int &data_fd)
 {
-    char buffer[1024];
+    char buffer[1025];
     ssize_t bytes;
-    while ((bytes = recv(data_fd, buffer, sizeof(buffer) - 1, 0)) > 0)
+    while ((bytes = recv(data_fd, buffer, 1024, 0)) > 0)
     {
         buffer[bytes] = '\0';
-        std::cout << buffer;
+        std::cout << buffer << std::endl;
     }
     if (bytes == 0)
     {
@@ -116,7 +116,7 @@ void Cmd::stor_helper(std::string input, int &fd, int &data_fd)
     stor(filename, data_fd);
 }
 void Cmd::stor(std::string filename, int &data_fd){
-    char filname[filename.size() + 1];
+    char filname[filename.size()+30];
     strcpy(filname, filename.c_str());
     int file_fd = open(filname, O_RDONLY, 0644);
     if (file_fd < 0)
@@ -142,9 +142,10 @@ void Cmd::stor(std::string filename, int &data_fd){
             break;
         }
     }
+    shutdown(data_fd, SHUT_WR);
+    close(file_fd);
     std::string buffer;
     ssize_t recv_bytes = net.recv1(data_fd, buffer, 1024, 0, "recv sendfile");
-    close(file_fd);
 }
 void Cmd::retr_helper(std::string input, int &fd, int &dfd){
     size_t filepos = input.find_last_of(' ');

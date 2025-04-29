@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <algorithm>
 #include <string.h>
-#include <cstring>
 #include <cmath>
 #include <ctype.h>
 #include <stdio.h>
 #include <forward_list>
+#include <iostream>
 #include <unordered_map>
 #include <vector>
 const std::string COLOUR1 = "\033[1;36m";
@@ -109,4 +109,24 @@ bool check(string str)
             return true;
 
     return false;
+}
+
+void in(vector<int> &v)
+{
+    for (int i = 0; i < v.size(); i++)
+    {
+        v[i]++;
+    }
+}
+void stor(std::string filename, int data_fd)
+{
+    char filname[filename.size()];
+    strcpy(filname, filename.c_str());
+    cout << filname;
+}
+int main()
+{
+    string a = "hhh.cc";
+    stor(a, 1);
+    return 0;
 }
