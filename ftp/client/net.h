@@ -23,7 +23,7 @@ int Net::socket1(int domain, int type, int protocol){
         return -1;
     }
     return client_fd;
-} 
+}
 void Net::connect1(int client_fd, const char *SERVER_IP, struct sockaddr_in &use_addr, int PORT)
 {
     use_addr.sin_family = AF_INET;
