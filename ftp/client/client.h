@@ -22,7 +22,7 @@ void FTP::run(){
     struct sockaddr_in client_addr;
     net.connect1(client_fd, SERVER_IP, client_addr, cmdPORT);
     std::cout << "已连接到服务器" << SERVER_IP << " " << cmdPORT << std::endl;
-    pasv_fd[client_fd] = false;
+    pasv_fd[client_fd] = true;
     cycle(pasv_fd[client_fd],client_fd);
 }
 void FTP::cycle(std::atomic<bool> &pasv,int &client_fd){

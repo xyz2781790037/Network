@@ -99,6 +99,7 @@ void Cmd::stor(int &fd, int &fdd, std::string args) {
     size_t filepos = args.find_last_of('/');
     std::string filename = args.substr(filepos + 1);
     std::string path = args.substr(0, filepos);
+    std::cout << path << std::endl;
     chdir(path.c_str());
     char filname[filename.size()];
     strcpy(filname, filename.c_str());
@@ -199,7 +200,7 @@ void Cmd::list(std::string path, int &fd, int &data_fd){
     shutdown(data_fd, SHUT_WR);
     std::string buf;
     net.recv1(data_fd, buf, 1024, 0);
-    std::cout << buf << std::endl;
+    std::cout << "send end: " << buf << std::endl;
 }
 void Net::handle_client(int &data_fd, int &sock_fd, std::string input, std::atomic<bool> &runflag, std::atomic<bool> &pasv)
 {

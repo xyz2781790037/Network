@@ -30,11 +30,11 @@ void FTP::run()
     int data_fd = net1.socket1(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in server_addr, data_addr;
     net1.binlis(server_fd, sizeof(server_addr), server_addr, cmdPORT);
-    net1.binlis(data_fd, sizeof(data_addr), data_addr, ACTIONPORT);
+    net1.binlis(data_fd, sizeof(data_addr), data_addr, dataPORT);
     set_notblocking(server_fd);
     set_notblocking(data_fd);
     std::atomic<bool> runflag = false;
-    pasv_fd[server_fd] = false;
+    pasv_fd[server_fd] = true;
     int epoll_fd = epoll_create1(0);
     if (epoll_fd < 0)
     {
@@ -56,9 +56,9 @@ void FTP::run()
     while (true)
     {
         runflag = true;
-        std::cout << "cycle" << std::endl;
+        std::cout << "cycle start" << std::endl;
         int n = epoll_wait(epoll_fd, events.data(), 100, -1);
-        std::cout << "n: " << n << std::endl;
+        std::cout << "事件数量: " << n << std::endl;
         for (int i = 0; i < n; i++)
         {
             int fd = events[i].data.fd;
@@ -180,7 +180,7 @@ void FTP::run()
                     }
                 }
             }
-            std::cout << "111" << std::endl;
+            std::cout << "for cycle 1" << std::endl;
         }
     }
 };
