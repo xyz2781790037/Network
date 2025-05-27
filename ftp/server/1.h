@@ -3,7 +3,7 @@
 #include "cmd.h"
 #include "threadpool.h"
 const int MAX_EVENTS = 100;
-const int ACTIONPORT = 8080;
+const int ACTIONPORT = 2222;
 const char *SERVER_IP = "127.0.0.1";
 const std::string UPLOAD_DIR = "./uploads";
 std::map<int, std::atomic<bool>> pasv_fd;
@@ -14,47 +14,27 @@ class FTP
     Path path;
     // void epoll1(int &server_fd,Net &net1);
     void set_notblocking(int &fd);
-    std::vector<int> buildPipefd(int &epoll_fd);
-    void wakeup(int &fd);
 
 public:
     void run();
 };
-std::vector<int> FTP::buildPipefd(int &epoll_fd)
-{
-    int pipefd[2];
-    pipe(pipefd); // pipefd[0] 读端，pipefd[1] 写端
-    epoll_event event_fd;
-    event_fd.data.fd = pipefd[0];
-    event_fd.events = EPOLLIN;
-    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, pipefd[0], &event_fd);
-    std::vector<int> v;
-    v.push_back(pipefd[0]);
-    v.push_back(pipefd[1]);
-    return v;
-}
 void FTP::set_notblocking(int &fd)
 {
     int flags = fcntl(fd, F_GETFL, 0);
     fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
-void FTP::wakeup(int &fd){
-    write(fd, "C", 1);
-}
 void FTP::run()
 {
     path.createDir(UPLOAD_DIR);
     int server_fd = net1.socket1(AF_INET, SOCK_STREAM, 0);
-    int opt = 1;
-    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     int data_fd = net1.socket1(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in server_addr, data_addr;
     net1.binlis(server_fd, sizeof(server_addr), server_addr, cmdPORT);
     net1.binlis(data_fd, sizeof(data_addr), data_addr, dataPORT);
     set_notblocking(server_fd);
-    // set_notblocking(data_fd);
+    set_notblocking(data_fd);
     std::atomic<bool> runflag = false;
-    pasv_fd[server_fd] = false;
+    pasv_fd[server_fd] = true;
     int epoll_fd = epoll_create1(0);
     if (epoll_fd < 0)
     {
@@ -62,16 +42,14 @@ void FTP::run()
         close(server_fd);
         return;
     }
-    std::vector<int> pipefd = buildPipefd(epoll_fd);
-
     epoll_event event;
     event.data.fd = server_fd;
     event.events = EPOLLIN | EPOLLRDHUP | EPOLLET;
     epoll_ctl(epoll_fd, EPOLL_CTL_ADD, server_fd, &event);
-    // epoll_event event2;
-    // event2.data.fd = data_fd;
-    // event2.events = EPOLLIN | EPOLLRDHUP | EPOLLET;
-    // epoll_ctl(epoll_fd, EPOLL_CTL_ADD, data_fd, &event2);
+    epoll_event event2;
+    event2.data.fd = data_fd;
+    event2.events = EPOLLIN | EPOLLRDHUP | EPOLLET;
+    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, data_fd, &event2);
     std::vector<epoll_event> events(MAX_EVENTS);
     std::cout << "Server listening on port " << cmdPORT << "&" << dataPORT << std::endl;
     pool po(32);
@@ -110,14 +88,10 @@ void FTP::run()
                     epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &client_event);
                     std::cout << "New client connected: " << client_fd << std::endl;
                     clients[client_fd] = inet_ntoa(client_addr.sin_addr);
-
-                    wakeup(pipefd[1]);
                 }
             }
-            else if (fd == pipefd[0])
+            else if (fd == data_fd)
             {
-                char buf[1];
-                read(pipefd[0], buf, 1);
                 sockaddr_in cdata_addr;
                 int cdata_fd = 0;
                 if (pasv_fd[server_fd])
@@ -130,9 +104,7 @@ void FTP::run()
                 }
                 else
                 {
-                    cdata_fd = net1.socket1(AF_INET, SOCK_STREAM, 0);
-                    // set_notblocking(cdata_fd);
-                    net1.connect1(cdata_fd, SERVER_IP, data_addr, ACTIONPORT);
+                    // net1.connect1(data_fd, clients[fd].c_str(), data_addr, ACTIONPORT);
                     // cdata_fd = data_fd;
                 }
                 if (!clients.empty())
@@ -173,7 +145,8 @@ void FTP::run()
                         std::cout << "客户端断开（fd " << cdata_fd << "）" << std::endl;
                         close(cdata_fd);
                     }
-                    else{
+                    else
+                    {
                         net1.send_Response(425, "No data connection established.", fd);
                     }
                 }

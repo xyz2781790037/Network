@@ -70,8 +70,14 @@ void Net::connect1(int &fd,const char *SERVER_IP, struct sockaddr_in &use_addr, 
 {
     use_addr.sin_family = AF_INET;
     use_addr.sin_port = htons(PORT);
+    std::cout << SERVER_IP << std::endl;
     if (inet_pton(AF_INET, SERVER_IP, &use_addr.sin_addr) <= 0)
     {
+        
+        if (errno == EINPROGRESS)
+        {
+            std::cout << "inet" << std::endl;
+        }
         perror("inet_pton");
         close(fd);
         return;
