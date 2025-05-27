@@ -6,7 +6,7 @@
 #include <functional>
 #include <sys/sendfile.h>
 #include <sys/stat.h>
-#include "net.hpp"
+#include "net.h"
 int filesort(const struct dirent **a, const struct dirent **b)
 {
     char aw[256], bw[256];

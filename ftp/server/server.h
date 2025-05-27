@@ -1,7 +1,7 @@
 #include <sys/epoll.h>
 #include <map>
-#include "cmd.hpp"
-#include "threadpool.hpp"
+#include "cmd.h"
+#include "threadpool.h"
 const int MAX_EVENTS = 100;
 const int ACTIONPORT = 2222;
 const char *SERVER_IP = "127.0.0.1";
