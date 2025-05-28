@@ -1,6 +1,7 @@
 #include <atomic>
 #include <sys/sendfile.h>
 #include <sys/stat.h>
+#include <cctype>
 #include <string.h>
 #include <fcntl.h>
 #include "net.h"
@@ -14,26 +15,42 @@ class Cmd {
     void create_directory(int &fd, std::string input);
     void stor_helper(std::string input, int &fd, int &data_fd);
     void retr_helper(std::string input, int &fd, int &dfd);
+    void transform(std::string &str);
 
 public:
     void handle_input(std::string &input, int &fd, int &data_fd, std::atomic<bool> &pasv);
 };
-    std::string Cmd::segstrspace(std::string &order, int count)
+void Cmd::transform(std::string &str){
+    std::string a;
+    bool flag = true;
+    for (char c : str)
     {
-        while (count < order.size())
-        {
-            if ((order[count] == ' ' && count == 0) || (order[count] == ' ' && count == order.size() - 1) || (count + 1 < order.size() && order[count] == ' ' && order[count + 1] == ' '))
-            {
-                order.erase(count, 1);
-            }
-            else
-            {
-                count++;
-            }
+        if(c != ' ' && flag){
+            a += toupper(c);
+        }else{
+            flag = false;
+            a += c;
         }
-        return order;
     }
+    str = a;
+}
+std::string Cmd::segstrspace(std::string &order, int count)
+{
+    while (count < order.size())
+    {
+        if ((order[count] == ' ' && count == 0) || (order[count] == ' ' && count == order.size() - 1) || (count + 1 < order.size() && order[count] == ' ' && order[count + 1] == ' '))
+        {
+            order.erase(count, 1);
+        }
+        else
+        {
+            count++;
+        }
+    }
+    return order;
+}
 void Cmd::handle_input(std::string &input, int &fd, int &data_fd,std::atomic<bool> &pasv){
+    transform(input);
     input = segstrspace(input);
     size_t pathpos = input.find_first_of(' ');
     std::string order;
@@ -82,6 +99,7 @@ void Cmd::recvlist(int &data_fd)
 {
     char buffer[1025];
     ssize_t bytes;
+    printf("list start\n");
     while ((bytes = recv(data_fd, buffer, 1024, 0)) > 0)
     {
         buffer[bytes] = '\0';

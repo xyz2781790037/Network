@@ -3,8 +3,8 @@
 #include "cmd.h"
 #include "threadpool.h"
 const int MAX_EVENTS = 100;
-const int ACTIONPORT = 8080;
-const char *SERVER_IP = "127.0.0.1";
+const int ACTIONPORT = 8081;
+const char *SERVER_IP = "10.30.0.109";
 const std::string UPLOAD_DIR = "./uploads";
 std::map<int, std::atomic<bool>> pasv_fd;
 std::map<int, int> data_map;
@@ -63,7 +63,7 @@ void FTP::run()
         return;
     }
     std::vector<int> pipefd = buildPipefd(epoll_fd);
-
+    std::cout << "pipe: " << pipefd[0] << "&" << pipefd[1] << std::endl;
     epoll_event event;
     event.data.fd = server_fd;
     event.events = EPOLLIN | EPOLLRDHUP | EPOLLET;
@@ -131,19 +131,19 @@ void FTP::run()
                 else
                 {
                     cdata_fd = net1.socket1(AF_INET, SOCK_STREAM, 0);
-                    // set_notblocking(cdata_fd);
-                    net1.connect1(cdata_fd, SERVER_IP, data_addr, ACTIONPORT);
-                    // cdata_fd = data_fd;
+                    net1.connect1(cdata_fd, SERVER_IP, cdata_addr, ACTIONPORT);
                 }
                 if (!clients.empty())
                 {
                     std::string ip = inet_ntoa(cdata_addr.sin_addr);
                     for (const auto &[cmd_fd, stored_ip] : clients)
                     {
+                        std::cout << "stored_ip: " << stored_ip << std::endl;
+                        std::cout << "ip: " << ip << std::endl;
                         if (stored_ip == ip)
                         {
                             data_map[cmd_fd] = cdata_fd;
-                            std::cout << cdata_fd << std::endl;
+                            std::cout << cmd_fd << std::endl;
                             break;
                         }
                     }
@@ -152,6 +152,7 @@ void FTP::run()
             }
             else
             {
+                std::cout << "干活的fd: " << fd << std::endl;
                 std::string buf;
                 int ret = net1.recv1(fd, buf, 1024, 0);
 
@@ -190,6 +191,7 @@ void FTP::run()
                     if (data_map.count(fd))
                     {
                         int dfd = data_map[fd];
+                        std::cout << "delete dfd: " << dfd << std::endl;
                         close(dfd);
                         data_map.erase(fd);
                     }

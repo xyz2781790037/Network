@@ -28,7 +28,7 @@ int Net::socket1(int domain, int type, int protocol){
     return sock_fd;
 }
 void Net::send_Response(int code, const std::string &message, int client_fd){
-    std::string response = std::to_string(code) + " " + message + "\r\n";
+    std::string response = std::to_string(code) + " " + message + "\n";
     int a = send(client_fd, response.c_str(), response.size(), 0);
     if (a <= 0)
     {
@@ -82,11 +82,19 @@ void Net::connect1(int &fd,const char *SERVER_IP, struct sockaddr_in &use_addr, 
         close(fd);
         return;
     }
-    if (connect(fd, (struct sockaddr *)&use_addr, sizeof(use_addr)) < 0)
+    int count = 0;
+    while (connect(fd, (struct sockaddr *)&use_addr, sizeof(use_addr)) < 0)
     {
-        perror("connect");
-        close(fd);
-        return;
+        if (errno == ECONNREFUSED){
+            count++;
+            if(count >= 6){
+                break;
+            }
+        }
+        else
+        {
+            perror("connect");
+        }
     }
 }
 int Net::recv1(int fd, std::string &buff, size_t n, int flags)
