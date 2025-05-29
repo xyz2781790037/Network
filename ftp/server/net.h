@@ -16,7 +16,7 @@ public:
     void send_Response(int code, const std::string &message, int client_fd);
     int recv1(int fd, std::string &buff, size_t n, int flags);
     int recvfile(int &read_fd, int &write_fd, size_t n);
-    void handle_client(int &data_fd, int &sock_fd, std::string input, std::atomic<bool> &runflag, std::atomic<bool> &pasv);
+    void handle_client(int &data_fd, int &sock_fd, std::string input, bool &pasv);
 };
 int Net::socket1(int domain, int type, int protocol){
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);

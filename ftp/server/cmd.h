@@ -7,6 +7,7 @@
 #include <sys/sendfile.h>
 #include <sys/stat.h>
 #include "net.h"
+int ACTIONPORT;
 int filesort(const struct dirent **a, const struct dirent **b)
 {
     char aw[256], bw[256];
@@ -53,11 +54,11 @@ class Cmd{
     void stor(int &fd, int &fdd, std::string args);
 
 public:
-    void handcmd(std::string orders, int &client_fd, int &data_fd, std::atomic<bool> &pasv);
+    void handcmd(std::string orders, int &client_fd, int &data_fd, bool &pasv);
     void retr(std::string path, int &client_fd, int &data_fd);
     void list(std::string path, int &fd, int &data_fd);
 };
-void Cmd::handcmd(std::string orders, int &client_fd, int &data_fd, std::atomic<bool> &pasv)
+void Cmd::handcmd(std::string orders, int &client_fd, int &data_fd, bool &pasv)
 {
     ssize_t cmdspace = orders.find_first_of(' ');
     std::string order = orders.substr(0, cmdspace);
@@ -98,7 +99,9 @@ void Cmd::handcmd(std::string orders, int &client_fd, int &data_fd, std::atomic<
 void Cmd::stor(int &fd, int &fdd, std::string args) {
     size_t filepos = args.find_last_of('/');
     std::string filename = args.substr(filepos + 1);
-    std::string path = args.substr(0, filepos);
+    std::string newpath = args.substr(1, filepos);
+    std::string path = "/home/zgyx/Network/ftp/server";
+    path += newpath;
     std::cout << path << std::endl;
     chdir(path.c_str());
     char filname[filename.size()];
@@ -202,9 +205,8 @@ void Cmd::list(std::string path, int &fd, int &data_fd){
     net.recv1(data_fd, buf, 1024, 0);
     std::cout << "send end: " << buf << std::endl;
 }
-void Net::handle_client(int &data_fd, int &sock_fd, std::string input, std::atomic<bool> &runflag, std::atomic<bool> &pasv)
+void Net::handle_client(int &data_fd, int &sock_fd, std::string input, bool &pasv)
 {
     Cmd cmd;
     cmd.handcmd(input, sock_fd, data_fd, pasv);
-    runflag = false;
 }

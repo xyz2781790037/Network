@@ -18,7 +18,7 @@ class Cmd {
     void transform(std::string &str);
 
 public:
-    void handle_input(std::string &input, int &fd, int &data_fd, std::atomic<bool> &pasv);
+    void handle_input(std::string &input, int &fd, int &data_fd, bool &pasv);
 };
 void Cmd::transform(std::string &str){
     std::string a;
@@ -49,7 +49,7 @@ std::string Cmd::segstrspace(std::string &order, int count)
     }
     return order;
 }
-void Cmd::handle_input(std::string &input, int &fd, int &data_fd,std::atomic<bool> &pasv){
+void Cmd::handle_input(std::string &input, int &fd, int &data_fd,bool &pasv){
     transform(input);
     input = segstrspace(input);
     size_t pathpos = input.find_first_of(' ');
@@ -64,6 +64,7 @@ void Cmd::handle_input(std::string &input, int &fd, int &data_fd,std::atomic<boo
     }
     if (order == "PASV")
     {
+        send(fd, "PASV", 4, 0);
         pasv = true;
     }
     else if (order == "LIST")

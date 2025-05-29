@@ -3,11 +3,12 @@
 #include "cmd.h"
 #include "threadpool.h"
 const int MAX_EVENTS = 100;
-const int ACTIONPORT = 8081;
-const char *SERVER_IP = "10.30.0.109";
+const char *SERVER_IP = "127.0.0.1"; // 10.30.0.109
 const std::string UPLOAD_DIR = "./uploads";
-std::map<int, std::atomic<bool>> pasv_fd;
+// std::map<int, bool> pasv_fd;
 std::map<int, int> data_map;
+class Usr;
+std::map<int,Usr> usrs;
 class FTP
 {
     Net net1;
@@ -52,9 +53,7 @@ void FTP::run()
     net1.binlis(server_fd, sizeof(server_addr), server_addr, cmdPORT);
     net1.binlis(data_fd, sizeof(data_addr), data_addr, dataPORT);
     set_notblocking(server_fd);
-    // set_notblocking(data_fd);
-    std::atomic<bool> runflag = false;
-    pasv_fd[server_fd] = false;
+    // Usr usr1(server_fd);
     int epoll_fd = epoll_create1(0);
     if (epoll_fd < 0)
     {
@@ -77,7 +76,6 @@ void FTP::run()
     pool po(32);
     while (true)
     {
-        runflag = true;
         std::cout << "cycle start" << std::endl;
         int n = epoll_wait(epoll_fd, events.data(), 100, -1);
         std::cout << "事件数量: " << n << std::endl;
@@ -104,6 +102,8 @@ void FTP::run()
                         }
                     }
                     set_notblocking(client_fd);
+                    Usr usr1(client_fd);
+                    usrs[client_fd] = usr1;
                     epoll_event client_event;
                     client_event.data.fd = client_fd;
                     client_event.events = EPOLLIN | EPOLLRDHUP | EPOLLET;
@@ -111,7 +111,6 @@ void FTP::run()
                     std::cout << "New client connected: " << client_fd << std::endl;
                     clients[client_fd] = inet_ntoa(client_addr.sin_addr);
 
-                    wakeup(pipefd[1]);
                 }
             }
             else if (fd == pipefd[0])
@@ -123,6 +122,7 @@ void FTP::run()
                 if (pasv_fd[server_fd])
                 {
                     cdata_fd = net1.accept1(data_fd, cdata_addr);
+                    std::cout << "pasv fd: " << cdata_fd << std::endl;
                     if (cdata_fd <= 0)
                     {
                         continue;
@@ -131,6 +131,7 @@ void FTP::run()
                 else
                 {
                     cdata_fd = net1.socket1(AF_INET, SOCK_STREAM, 0);
+                    std::cout << "action fd: " << cdata_fd  << std::endl;
                     net1.connect1(cdata_fd, SERVER_IP, cdata_addr, ACTIONPORT);
                 }
                 if (!clients.empty())
@@ -155,24 +156,46 @@ void FTP::run()
                 std::cout << "干活的fd: " << fd << std::endl;
                 std::string buf;
                 int ret = net1.recv1(fd, buf, 1024, 0);
-
+                std::string bufCmd = buf.substr(0, 4);
+                if(bufCmd == "PORT"){
+                    std::string args = buf.substr(5);
+                    ACTIONPORT = stoi(args);
+                    wakeup(pipefd[1]);
+                    std::cout << "port cmd" << std::endl;
+                    continue;
+                }
                 if (ret > 0)
                 {
                     if (data_map.find(fd) != data_map.end())
                     {
                         int cdata_fd = data_map[fd];
                         std::cout << "命令：" << buf << std::endl;
-                        std::atomic<bool> &pasv = pasv_fd[server_fd];
-                        po.enqueue([buf, fd, cdata_fd, &runflag, &pasv]() mutable
+                        bool &pasv = usrs[fd].pasv;
+                        bool &runflag = usrs[fd].runflag;
+                        std::cout << "datafd: " << cdata_fd << std::endl;
+                        std::mutex mtx;
+                        std::condition_variable cv;
+                        po.enqueue([buf, fd, cdata_fd, &pasv, &mtx, &cv]() mutable
                                    { 
                                 Net net;
-                                net.handle_client(cdata_fd, fd, buf, runflag,pasv); });
-                        while (runflag)
+                                net.handle_client(cdata_fd, fd, buf,pasv);
+                                {
+                                    std::lock_guard<std::mutex> lock(mtx);
+                                    usrs[fd].runflag = true;
+                                }
+                                cv.notify_one();
+                             });
                         {
-                            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                            std::unique_lock<std::mutex> lock(mtx);
+                            cv.wait(lock, [&runflag]()
+                                    { return runflag; });
                         }
                         std::cout << "客户端断开（fd " << cdata_fd << "）" << std::endl;
+                        runflag = false;
                         close(cdata_fd);
+                        if(pasv == true){
+                            wakeup(pipefd[1]);
+                        }
                     }
                     else{
                         net1.send_Response(425, "No data connection established.", fd);
@@ -213,4 +236,11 @@ void FTP::run()
             std::cout << "for cycle 1" << std::endl;
         }
     }
+};
+class Usr{
+public:
+    int server_fd;
+    bool pasv;
+    bool runflag;
+    Usr(int &fd):server_fd(fd),pasv(false),runflag(false){}
 };
